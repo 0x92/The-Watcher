@@ -74,7 +74,7 @@ Definition of Done (DoD): Alle Dateien existieren, make up startet Container, /h
 
 1) Datenmodell (PostgreSQL + Alembic)
 
-[ ] SQLAlchemy-Modelle erstellen:
+[x] SQLAlchemy-Modelle erstellen:
 
 Source(id, name, type, endpoint, enabled, interval_sec, auth_json, filters_json, last_run_at, created_at)
 
@@ -93,9 +93,9 @@ User(id, email UNIQUE, role, password_hash, created_at)
 Setting(key UNIQUE, value_json)
 
 
-[ ] Alembic init & Revision: alembic revision --autogenerate -m "init"
+[x] Alembic init & Revision: alembic revision --autogenerate -m "init"
 
-[ ] Constraints/Indices
+[x] Constraints/Indices
 
 UNIQUE: Item.url, Gematria.item_id
 
