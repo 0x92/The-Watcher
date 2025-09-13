@@ -155,9 +155,9 @@ DoD: 100% Tests für compute_all, Benchmarks (<0.2ms/Headline avg. lokal).
 
 4) Ingestion Pipelines (Celery)
 
-[ ] Celery-App celery_app.py + Beat-Schedule
+[x] Celery-App celery_app.py + Beat-Schedule
 
-[ ] RSS/Atom Ingest (app/services/ingest/rss.py)
+[x] RSS/Atom Ingest (app/services/ingest/rss.py)
 
 ETag/If-Modified-Since, Retry/Backoff, dedupe via SHA256(title+url)
 
@@ -168,7 +168,7 @@ Ergebnisspeicher: Postgres Item, Gematria, Indexierung in OS
 
 [ ] Reddit, Mastodon, YouTube (modulare Adapter, Feature-flagged)
 
-[ ] Tasks
+[x] Tasks
 
 run_source(source_id)
 
