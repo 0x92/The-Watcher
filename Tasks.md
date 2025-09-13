@@ -525,7 +525,7 @@ DoD: Badge im README.
 7. Heatmap + Graph (Task 6).
 
 
-8. Erste Alert-Regel (Task 7).
+8. [x] Erste Alert-Regel (Task 7).
 
 
 

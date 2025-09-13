@@ -1,21 +1,23 @@
-from __future__ import annotations
-
 """Celery tasks for ingesting sources and processing items."""
+
+from __future__ import annotations
 
 import os
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Dict
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from celery_app import celery
-from app.models import Source, Item, Gematria
+from app.models import Gematria, Item, Source
+from app.services.alerts import evaluate_alerts as evaluate_alerts_service
 from app.services.gematria import compute_all, normalize
 from app.services.ingest import fetch
 
 
 # --- Session utilities -----------------------------------------------------
+
 
 def _session_from_env() -> Session:
     """Create a SQLAlchemy session based on the DATABASE_URL env var."""
@@ -24,6 +26,7 @@ def _session_from_env() -> Session:
 
 
 # --- Core logic ------------------------------------------------------------
+
 
 def compute_gematria_for_item(
     item_id: int, *, session: Session | None = None
@@ -102,12 +105,20 @@ def index_item_to_opensearch(item_id: int) -> int:  # pragma: no cover - placeho
     return item_id
 
 
-def evaluate_alerts() -> int:  # pragma: no cover - placeholder
-    """Placeholder for alert evaluation logic."""
-    return 0
+def evaluate_alerts(*, session: Session | None = None) -> int:
+    """Evaluate alerts using the alert service."""
+    close = False
+    if session is None:
+        session = _session_from_env()
+        close = True
+    result = evaluate_alerts_service(session)
+    if close:
+        session.close()
+    return result
 
 
 # --- Celery task wrappers --------------------------------------------------
+
 
 @celery.task(name="run_source")
 def run_source_task(source_id: int) -> int:
