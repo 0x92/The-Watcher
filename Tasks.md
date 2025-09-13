@@ -191,11 +191,11 @@ Akzeptanz: make seed-rss fügt 1–2 Feeds hinzu; make run-once zieht Items, ber
 
 [ ] Routen
 
-GET /api/health → {status:"ok"}
+[x] GET /api/health → {status:"ok"}
 
-GET /api/items (Filter: query, value, scheme, source, from, to, lang, page, size)
+[x] GET /api/items (Filter: query, value, scheme, source, from, to, lang, page, size)
 
-GET /api/graph (Param: scheme, value, window) → Kanten zwischen gleichwertigen Items
+[x] GET /api/graph (Param: scheme, value, window) → Kanten zwischen gleichwertigen Items
 
 POST /api/admin/sources (CRUD)
 
