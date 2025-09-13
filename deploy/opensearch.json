@@ -3,5 +3,25 @@
     "number_of_shards": 1,
     "number_of_replicas": 0
   },
-  "mappings": {}
+  "mappings": {
+    "dynamic_templates": [
+      {
+        "gematria_values_ints": {
+          "path_match": "gematria_values.*",
+          "mapping": {"type": "integer"}
+        }
+      }
+    ],
+    "properties": {
+      "id": {"type": "keyword"},
+      "source": {"type": "keyword"},
+      "published_at": {"type": "date"},
+      "lang": {"type": "keyword"},
+      "title": {"type": "text", "analyzer": "english"},
+      "url": {"type": "keyword"},
+      "gematria_values": {"type": "object"},
+      "tags": {"type": "keyword"},
+      "author": {"type": "keyword"}
+    }
+  }
 }

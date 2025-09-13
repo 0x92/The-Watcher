@@ -1,0 +1,9 @@
+{
+  "nodes": [
+    {"id": "uuid1", "title": "...", "value": 93}
+  ],
+  "edges": [
+    {"from": "uuid1", "to": "uuid2", "weight": 0.8}
+  ]
+}
+
