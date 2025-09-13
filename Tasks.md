@@ -112,13 +112,13 @@ Akzeptanzkriterien: Migration läuft ohne Fehler, Foreign Keys korrekt, pytest -
 
 2) OpenSearch-Index & Mapping
 
-[ ] Index items anlegen mit Mapping:
+[x] Index items anlegen mit Mapping:
 
 Felder: id (keyword), source (keyword), published_at (date), lang (keyword), title (text, analyzer english), url (keyword),
 gematria_values (object per scheme → integer), tags (keyword), author (keyword)
 
 
-[ ] Shards/Replicas: 1/0 lokal; prod 3/1
+[x] Shards/Replicas: 1/0 lokal; prod 3/1
 
 [ ] Aggregationen testen: by scheme, value, source, hour_of_day
 
@@ -428,7 +428,7 @@ fmt: black .
   "buckets": {"by_source":{"Reuters":44}}
 }
 
-[ ] GET /api/graph
+[x] GET /api/graph
 
 {"nodes":[{"id":"uuid1","title":"...","value":93}], "edges":[{"from":"uuid1","to":"uuid2","weight":0.8}]}
 
