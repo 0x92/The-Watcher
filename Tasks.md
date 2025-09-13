@@ -130,22 +130,22 @@ DoD: make seed-os erzeugt Index, GET /api/search liefert Aggregationen.
 
 3) Gematria-Engine (Services)
 
-[ ] Schemes definieren (app/services/gematria/schemes.py)
+[x] Schemes definieren (app/services/gematria/schemes.py)
 
 ordinal, reduction (Pythagorean), reverse, reverse_reduction
 
 optional: ALW/ALB/KFW als JSON-Mapping
 
 
-[ ] Normalizer (ignore_pattern = r'[^A-Z]', konfigurierbar)
+[x] Normalizer (ignore_pattern = r'[^A-Z]', konfigurierbar)
 
-[ ] API
+[x] API
 
 compute_all(text:str, schemes:list[str]) -> dict[str,int]
 digital_root(n:int) -> int
 factor_signature(n:int) -> dict[int,int]
 
-[ ] Unit-Tests: bekannte Beispiele, Edge Cases (Zahlen, Emojis, Unicode)
+[x] Unit-Tests: bekannte Beispiele, Edge Cases (Zahlen, Emojis, Unicode)
 
 
 DoD: 100% Tests für compute_all, Benchmarks (<0.2ms/Headline avg. lokal).
