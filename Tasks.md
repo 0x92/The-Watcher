@@ -8,18 +8,18 @@ Modul-Ziele: saubere Services, wiederholbare Deployments, reproduzierbare Analys
 
 0) Projekt-Scaffold
 
-[ ] Repo initialisieren
+[x] Repo initialisieren
 
-[ ] LICENSE (MIT), README.md, Tasks.md (diese Datei)
+[x] LICENSE (MIT), README.md, Tasks.md (diese Datei)
 
-[ ] .gitignore (Python, venv, pycache, .env, data/*, .pytest_cache, .mypy_cache)
+[x] .gitignore (Python, venv, pycache, .env, data/*, .pytest_cache, .mypy_cache)
 
-[ ] pyproject.toml (poetry oder hatch) oder requirements.txt
+[x] pyproject.toml (poetry oder hatch) oder requirements.txt
 
-[ ] Makefile (Shortcuts, s. unten)
+[x] Makefile (Shortcuts, s. unten)
 
 
-[ ] Verzeichnisstruktur
+[x] Verzeichnisstruktur
 
 /app
   /blueprints/{ui,api,admin}
@@ -36,7 +36,7 @@ wsgi.py
 celery_app.py
 config.py
 
-[ ] Paketabhängigkeiten festlegen
+[x] Paketabhängigkeiten festlegen
 
 Flask, gunicorn, Jinja2, Flask-Login, Flask-WTF
 
@@ -57,7 +57,7 @@ tests: pytest, pytest-cov, factory_boy
 lint: ruff, black, mypy (optional)
 
 
-[ ] Env-Template .env.example
+[x] Env-Template .env.example
 
 FLASK_ENV=production
 SECRET_KEY=change-me
