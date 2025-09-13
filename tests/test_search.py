@@ -1,4 +1,7 @@
-from app.services.search import items_index_body
+from pathlib import Path
+import json
+
+from app.services.search import items_index_body, SearchResponse
 
 
 def test_items_index_body_structure():
@@ -10,3 +13,10 @@ def test_items_index_body_structure():
     assert props["published_at"]["type"] == "date"
     templates = body["mappings"]["dynamic_templates"]
     assert templates[0]["gematria_values_ints"]["path_match"] == "gematria_values.*"
+
+
+def test_search_response_example_validates():
+    example_path = Path("app/services/search/search_response_example.json")
+    data = json.loads(example_path.read_text())
+    resp = SearchResponse(**data)
+    assert resp.items[0].source == "Reuters"

@@ -1,0 +1,26 @@
+{
+  "items": [
+    {
+      "id": "uuid1",
+      "title": "Market jitters as markets await Fed",
+      "url": "https://example.com/article",
+      "source": "Reuters",
+      "published_at": "2025-09-12T14:05:00Z",
+      "gematria_values": {
+        "ordinal": 93,
+        "reduction": 39
+      },
+      "tags": [
+        "markets",
+        "fed"
+      ],
+      "author": "Jane Doe",
+      "lang": "en"
+    }
+  ],
+  "buckets": {
+    "by_source": {
+      "Reuters": 44
+    }
+  }
+}
