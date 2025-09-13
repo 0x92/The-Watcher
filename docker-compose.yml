@@ -1,0 +1,30 @@
+version: '3.9'
+
+services:
+  web:
+    build: .
+    command: gunicorn wsgi:app --bind 0.0.0.0:5000
+    volumes:
+      - .:/app
+    ports:
+      - '5000:5000'
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - postgres
+      - opensearch
+  redis:
+    image: redis:7
+  postgres:
+    image: postgres:14
+    environment:
+      POSTGRES_DB: gematria
+      POSTGRES_USER: gematria
+      POSTGRES_PASSWORD: gematria
+  opensearch:
+    image: opensearchproject/opensearch:2.11.1
+    environment:
+      discovery.type: single-node
+    ports:
+      - '9200:9200'

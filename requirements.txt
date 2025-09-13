@@ -1,0 +1,25 @@
+Flask
+gunicorn
+Jinja2
+Flask-Login
+Flask-WTF
+SQLAlchemy
+alembic
+psycopg2-binary
+Celery
+redis
+requests
+feedparser
+python-dateutil
+opensearch-py
+pydantic
+PyYAML
+python-dotenv
+# tests
+pytest
+pytest-cov
+factory_boy
+# lint
+ruff
+black
+mypy
