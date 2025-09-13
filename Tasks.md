@@ -218,7 +218,7 @@ DoD: OpenAPI (via flask-openapi3 oder YAML) generiert; pytest -k api grün.
 
 6) UI/Dashboard (Blueprint ui)
 
-[ ] Pages
+[x] Pages
 
 / Overview: KPIs (Items 24h, Top Werte, Quellen), Sparklines
 
@@ -233,14 +233,14 @@ DoD: OpenAPI (via flask-openapi3 oder YAML) generiert; pytest -k api grün.
 /admin Quellen/Intervalle, Regl-Editor (YAML)
 
 
-[ ] Assets
+[x] Assets
 
 Plotly/ECharts für Charts, Cytoscape für Graph
 
 Tailwind oder minimal CSS
 
 
-[ ] UX
+[x] UX
 
 Filterleiste (Zeit, Quelle, Sprache, Scheme, Wert-Range)
 
