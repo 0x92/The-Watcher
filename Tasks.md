@@ -286,15 +286,15 @@ DoD: Manuell auslösendes Test-Item erzeugt Event; E-Mail/Webhook-Call sichtbar.
 
 8) Sicherheit & Auth
 
-[ ] RBAC: admin, analyst, viewer
+[x] RBAC: admin, analyst, viewer
 
-[ ] Auth: Flask-Login (später OAuth Google optional)
+[x] Auth: Flask-Login (später OAuth Google optional)
 
-[ ] CSRF für Admin-POSTs, sichere Cookie-Flags
+[x] CSRF für Admin-POSTs, sichere Cookie-Flags
 
-[ ] Rate-Limits (Flask-Limiter) für öffentliche Endpunkte
+[x] Rate-Limits (Flask-Limiter) für öffentliche Endpunkte
 
-[ ] Robots/ToS beachten (nur erlaubte APIs/Feeds)
+[x] Robots/ToS beachten (nur erlaubte APIs/Feeds)
 
 
 DoD: Rollen prüfen; Admin-only Routen geschützt; Security-Header via Nginx.

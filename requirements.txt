@@ -3,6 +3,7 @@ gunicorn
 Jinja2
 Flask-Login
 Flask-WTF
+Flask-Limiter
 SQLAlchemy
 alembic
 psycopg2-binary
