@@ -2,12 +2,12 @@ from app import create_app
 
 
 ROUTES = [
-    ('/', 'Overview'),
-    ('/stream', 'Stream'),
-    ('/heatmap', 'Heatmap'),
-    ('/graph', 'Graph'),
-    ('/alerts', 'Alerts'),
-    ('/admin', 'Admin'),
+    ("/", "Overview"),
+    ("/stream", "Stream"),
+    ("/heatmap", "Heatmap"),
+    ("/graph", "Graph"),
+    ("/alerts", "Alerts"),
+    ("/admin", "Admin"),
 ]
 
 

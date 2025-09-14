@@ -12,4 +12,3 @@ api_bp.add_url_rule("/graph", view_func=graph)
 
 
 __all__ = ["api_bp"]
-
