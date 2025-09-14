@@ -65,7 +65,9 @@ def create_app() -> Flask:
         g.start_time = time.perf_counter()
 
     @app.after_request
-    def _record_request(response: Response) -> Response:  # pragma: no cover - request timing
+    def _record_request(
+        response: Response,
+    ) -> Response:  # pragma: no cover - request timing
         elapsed = time.perf_counter() - getattr(g, "start_time", time.perf_counter())
         endpoint = request.endpoint or "unknown"
         REQUEST_LATENCY.labels(endpoint).observe(elapsed)

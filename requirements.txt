@@ -26,3 +26,4 @@ factory_boy
 ruff
 black
 mypy
+pre-commit

@@ -36,7 +36,11 @@ def items_index_body(*, shards: int = 1, replicas: int = 0) -> dict:
 
 
 def create_items_index(
-    client: OpenSearch, *, index_name: str = ITEMS_INDEX, shards: int = 1, replicas: int = 0
+    client: OpenSearch,
+    *,
+    index_name: str = ITEMS_INDEX,
+    shards: int = 1,
+    replicas: int = 0,
 ) -> None:
     """Create the items index if it does not already exist."""
 
@@ -46,4 +50,3 @@ def create_items_index(
 
 
 __all__ = ["ITEMS_INDEX", "items_index_body", "create_items_index"]
-

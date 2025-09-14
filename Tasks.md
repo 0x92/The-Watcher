@@ -348,13 +348,13 @@ DoD: Lokales Deployment erreichbar auf https://localhost (oder 80/443 je nach Se
 
 11) Tests & Qualität
 
-[ ] Pytest Suites: models, gematria, api, alerts, ingest (mit VCR.py für HTTP-Mocks)
+[x] Pytest Suites: models, gematria, api, alerts, ingest (mit VCR.py für HTTP-Mocks)
 
-[ ] Coverage ≥ 85% Kernmodule (services/gematria, alerts, api)
+[x] Coverage ≥ 85% Kernmodule (services/gematria, alerts, api)
 
-[ ] Ruff + Black via pre-commit
+[x] Ruff + Black via pre-commit
 
-[ ] Type-Checking (mypy, tolerant)
+[x] Type-Checking (mypy, tolerant)
 
 
 DoD: make test grün, Lint sauber.

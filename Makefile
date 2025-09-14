@@ -6,7 +6,7 @@ install:
 	pip install -r requirements.txt
 
 lint:
-	ruff check .
+	pre-commit run --all-files
 
 format:
 	black .

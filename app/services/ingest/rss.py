@@ -48,9 +48,7 @@ def fetch(
         title = entry.get("title", "")
         link = entry.get("link") or entry.get("id") or ""
         published_struct = entry.get("published_parsed") or entry.get("updated_parsed")
-        published_at = (
-            datetime(*published_struct[:6]) if published_struct else None
-        )
+        published_at = datetime(*published_struct[:6]) if published_struct else None
         dedupe_hash = hashlib.sha256(f"{title}{link}".encode("utf-8")).hexdigest()
         entries.append(
             FeedEntry(

@@ -30,4 +30,3 @@ def graph() -> tuple[dict, int]:
 
 
 __all__ = ["GraphNode", "GraphEdge", "GraphResponse", "graph"]
-
