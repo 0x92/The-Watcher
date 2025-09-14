@@ -1,5 +1,3 @@
-import pytest
-
 from app.services.gematria import compute_all, digital_root, factor_signature
 
 

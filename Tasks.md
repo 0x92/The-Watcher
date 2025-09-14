@@ -304,13 +304,13 @@ DoD: Rollen prüfen; Admin-only Routen geschützt; Security-Header via Nginx.
 
 9) Observability & Logs
 
-[ ] Structured Logging (JSON) für Web & Worker
+[x] Structured Logging (JSON) für Web & Worker
 
-[ ] Prometheus-Metrics (Requests, Task-Duration, Queue-Depth)
+[x] Prometheus-Metrics (Requests, Task-Duration, Queue-Depth)
 
-[ ] Healthchecks /health, /ready
+[x] Healthchecks /health, /ready
 
-[ ] Sentry (optional) DSN in .env
+[x] Sentry (optional) DSN in .env
 
 
 DoD: curl /metrics zeigt Counter/Gauges; Task-Laufzeiten sichtbar.
