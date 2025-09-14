@@ -364,9 +364,9 @@ DoD: make test grün, Lint sauber.
 
 12) Beispiel-Seed & Demo
 
-[ ] Seed-Sources: 2–3 RSS (Reuters, AP), 1 Mastodon (public/hashtag), 1 YouTube-Channel
+[x] Seed-Sources: 2–3 RSS (Reuters, AP), 1 Mastodon (public/hashtag), 1 YouTube-Channel
 
-[ ] Seed-Alerts: 1 Regel für Wert 93, Quelle=Reuters
+[x] Seed-Alerts: 1 Regel für Wert 93, Quelle=Reuters
 
 [ ] Demo-Notebook (optional): Query + Plot (repro für Readme GIF)
 
