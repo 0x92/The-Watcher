@@ -320,16 +320,16 @@ DoD: curl /metrics zeigt Counter/Gauges; Task-Laufzeiten sichtbar.
 
 10) Deployment (Docker Compose + Nginx)
 
-[ ] docker-compose.yml mit Services:
+[x] docker-compose.yml mit Services:
 
 web (gunicorn), worker, beat, nginx, postgres, opensearch, redis
 
 
-[ ] Nginx Reverse Proxy (GZip, HSTS optional, caching static)
+[x] Nginx Reverse Proxy (GZip, HSTS optional, caching static)
 
-[ ] Volumes/Backups: Postgres (pgdata), OS (osdata)
+[x] Volumes/Backups: Postgres (pgdata), OS (osdata)
 
-[ ] Commands
+[x] Commands
 
 make up / make down
 

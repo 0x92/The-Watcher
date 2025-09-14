@@ -6,14 +6,42 @@ services:
     command: gunicorn wsgi:app --bind 0.0.0.0:5000
     volumes:
       - .:/app
-    ports:
-      - '5000:5000'
     env_file:
       - .env
     depends_on:
       - redis
       - postgres
       - opensearch
+  worker:
+    build: .
+    command: celery -A celery_app.celery worker --loglevel=INFO
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - postgres
+      - opensearch
+  beat:
+    build: .
+    command: celery -A celery_app.celery beat --loglevel=INFO
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - postgres
+      - opensearch
+  nginx:
+    image: nginx:1.25
+    ports:
+      - "80:80"
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - web
   redis:
     image: redis:7
   postgres:
@@ -22,9 +50,17 @@ services:
       POSTGRES_DB: gematria
       POSTGRES_USER: gematria
       POSTGRES_PASSWORD: gematria
+    volumes:
+      - pgdata:/var/lib/postgresql/data
   opensearch:
     image: opensearchproject/opensearch:2.11.1
     environment:
       discovery.type: single-node
     ports:
       - '9200:9200'
+    volumes:
+      - osdata:/usr/share/opensearch/data
+  
+volumes:
+  pgdata:
+  osdata:
