@@ -16,6 +16,8 @@ opensearch-py
 pydantic
 PyYAML
 python-dotenv
+prometheus-client
+sentry-sdk
 # tests
 pytest
 pytest-cov

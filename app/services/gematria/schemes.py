@@ -1,6 +1,6 @@
-from __future__ import annotations
-
 """Gematria letter mappings for various schemes."""
+
+from __future__ import annotations
 
 from typing import Dict
 
