@@ -1,32 +1,56 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, Field, ConfigDict
+from datetime import datetime
+from typing import Iterable, List, Optional
+
+from flask import current_app, request
+
+from app.db import get_session
+from app.services.analytics.graph import GraphResponse, build_graph, parse_window
 
 
-class GraphNode(BaseModel):
-    id: str
-    title: str
-    value: int
-
-
-class GraphEdge(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
-    from_: str = Field(..., alias="from")
-    to: str
-    weight: float
-
-
-class GraphResponse(BaseModel):
-    nodes: list[GraphNode]
-    edges: list[GraphEdge]
+def _extract_roles() -> Optional[List[str]]:
+    roles: List[str] = []
+    roles.extend(request.args.getlist("role"))
+    roles_param = request.args.get("roles")
+    if roles_param:
+        roles.extend(value.strip() for value in roles_param.split(","))
+    cleaned = [role.lower() for role in roles if role.strip()]
+    return cleaned or None
 
 
 def graph() -> tuple[dict, int]:
-    sample = GraphResponse(
-        nodes=[GraphNode(id="uuid1", title="...", value=93)],
-        edges=[GraphEdge(from_="uuid1", to="uuid2", weight=0.8)],
-    )
-    return sample.model_dump(by_alias=True), 200
+    window_param = request.args.get("window")
+    try:
+        delta = parse_window(window_param)
+    except ValueError as exc:
+        return {"error": str(exc)}, 400
+
+    since = datetime.utcnow() - delta if delta else None
+
+    limit = request.args.get("limit", type=int)
+    if limit is None:
+        limit = 50
+    limit = max(1, min(limit, 200))
+
+    roles = _extract_roles()
+
+    db_url = current_app.config.get("DATABASE_URL") or current_app.config.get("SQLALCHEMY_DATABASE_URI")
+
+    session = get_session(db_url)
+    try:
+        graph_data: GraphResponse = build_graph(
+            session,
+            since=since,
+            roles=roles,
+            limit_per_type=limit,
+        )
+    finally:
+        session.close()
+
+    payload = graph_data.model_dump()
+    payload["meta"].update({"window": window_param or None, "limit": limit})
+    return payload, 200
 
 
-__all__ = ["GraphNode", "GraphEdge", "GraphResponse", "graph"]
+__all__ = ["graph"]

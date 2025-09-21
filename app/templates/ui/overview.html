@@ -1,5 +1,44 @@
 {% extends 'base.html' %}
 {% block content %}
-<h1>Overview</h1>
-<p>KPIs will appear here.</p>
+<section class="hero">
+  <div class="hero-copy">
+    <h1>Realtime Intelligence Cockpit</h1>
+    <p>Behalte Quellen, Alerts und Muster im Blick – aggregiert in einer modernen Oberfläche mit Interaktionen in Echtzeit.</p>
+    <p class="status-message" data-overview-status>Live-Status wird geladen...</p>
+  </div>
+</section>
+
+<section class="dashboard-grid" data-overview>
+  <article class="stat-card">
+    <span class="stat-label">Aktive Quellen</span>
+    <span class="stat-value" data-metric="sources">–</span>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label">Items (24h)</span>
+    <span class="stat-value" data-metric="items">–</span>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label">Alerts (24h)</span>
+    <span class="stat-value" data-metric="alerts">–</span>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label">Top Pattern Score</span>
+    <span class="stat-value" data-metric="pattern-score">–</span>
+  </article>
+</section>
+
+<section class="split-panels">
+  <article class="card">
+    <header>Top Alerts</header>
+    <ul class="insight-list" data-overview-alerts>
+      <li>Wird geladen...</li>
+    </ul>
+  </article>
+  <article class="card">
+    <header>Neueste Muster</header>
+    <ul class="insight-list" data-overview-patterns>
+      <li>Wird geladen...</li>
+    </ul>
+  </article>
+</section>
 {% endblock %}

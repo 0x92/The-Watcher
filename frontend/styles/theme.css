@@ -1,0 +1,40 @@
+:root {
+  color-scheme: light;
+  --font-sans: "Inter", "Segoe UI", sans-serif;
+  --font-mono: "Fira Code", monospace;
+  --color-bg: #f5f7fb;
+  --color-surface: #ffffff;
+  --color-surface-alt: #f1f5f9;
+  --color-border: #dfe3ed;
+  --color-text: #1f2937;
+  --color-text-muted: #64748b;
+  --color-primary: #2563eb;
+  --color-primary-strong: #1d4ed8;
+  --color-accent: #f97316;
+  --color-success: #16a34a;
+  --color-danger: #dc2626;
+  --shadow-lg: 0 18px 40px -24px rgba(15, 23, 42, 0.45);
+  --radius-lg: 20px;
+  --radius-md: 12px;
+  --radius-sm: 8px;
+  --transition: 180ms ease;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --color-bg: #0f172a;
+  --color-surface: #111c34;
+  --color-surface-alt: #0b1529;
+  --color-border: #1e293b;
+  --color-text: #e2e8f0;
+  --color-text-muted: #94a3b8;
+  --color-primary: #60a5fa;
+  --color-primary-strong: #3b82f6;
+  --color-accent: #fb923c;
+  --shadow-lg: 0 18px 40px -24px rgba(8, 47, 73, 0.6);
+}
+
+:root {
+  --btn-padding-y: 0.55rem;
+  --btn-padding-x: 1.1rem;
+}

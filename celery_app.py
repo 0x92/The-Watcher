@@ -4,8 +4,48 @@ import os
 import time
 from datetime import timedelta
 
-from celery import Celery
-from celery.signals import task_postrun, task_prerun, task_sent
+try:  # pragma: no cover - optional dependency
+    from celery import Celery
+    from celery.signals import task_postrun, task_prerun, task_sent
+except Exception:  # pragma: no cover - optional dependency
+    class _Signal:
+        def connect(self, func=None, **_kwargs):
+            if func is None:
+                def decorator(fn):
+                    return fn
+                return decorator
+            return func
+
+    task_postrun = _Signal()
+    task_prerun = _Signal()
+    task_sent = _Signal()
+
+    class _Conf(dict):
+        def __getattr__(self, item):
+            return self.get(item)
+
+        def __setattr__(self, key, value):
+            self[key] = value
+
+    class Celery:  # type: ignore
+        def __init__(self, *args, **_kwargs):
+            self._conf = _Conf()
+
+        @property
+        def conf(self):
+            return self._conf
+
+        def task(self, *args, **_kwargs):
+            def decorator(func):
+                def wrapper(*fargs, **fkwargs):
+                    return func(*fargs, **fkwargs)
+
+                wrapper.__name__ = func.__name__
+                wrapper.run = func
+                return wrapper
+
+            return decorator
+
 from prometheus_client import Gauge, Histogram
 
 from app import create_app
@@ -65,3 +105,4 @@ celery.conf.beat_schedule = {"ping": {"task": "ping", "schedule": timedelta(minu
 @celery.task
 def ping() -> str:
     return "pong"
+

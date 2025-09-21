@@ -19,3 +19,4 @@ data/
 
 # Others
 .DS_Store
+node_modules/

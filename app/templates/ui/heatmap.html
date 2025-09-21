@@ -1,5 +1,58 @@
 {% extends 'base.html' %}
 {% block content %}
-<h1>Heatmap</h1>
-<div id="heatmap"></div>
+<header>
+  <h1>Adaptive Heatmap & Timeline</h1>
+</header>
+<form id="heatmap-filters" class="filter-grid" autocomplete="off">
+  <div class="form-control">
+    <label for="heatmap-interval">Zeitraum</label>
+    <select id="heatmap-interval" name="interval">
+      <option value="6h">6 Stunden</option>
+      <option value="12h">12 Stunden</option>
+      <option value="24h" selected>24 Stunden</option>
+      <option value="3d">3 Tage</option>
+      <option value="7d">7 Tage</option>
+      <option value="30d">30 Tage</option>
+    </select>
+  </div>
+
+  <div class="form-control">
+    <label for="heatmap-value-min">Mindest-Events pro Quelle</label>
+    <input id="heatmap-value-min" name="value_min" type="number" min="0" max="1000" value="0">
+  </div>
+
+  <div class="form-control">
+    <label for="heatmap-refresh">Auto-Refresh</label>
+    <select id="heatmap-refresh" name="refresh">
+      <option value="0">Aus</option>
+      <option value="15" selected>15 Sekunden</option>
+      <option value="30">30 Sekunden</option>
+      <option value="60">60 Sekunden</option>
+    </select>
+  </div>
+
+  <div class="form-control">
+    <label for="heatmap-source-filter">Quellenfilter (kommagetrennt)</label>
+    <input id="heatmap-source-filter" name="sources" type="text" placeholder="z. B. Reuters, AP">
+  </div>
+
+  <button type="button" id="heatmap-reload" class="button-primary">Aktualisieren</button>
+</form>
+
+<section id="heatmap-dashboard">
+  <p class="status-message" data-state="idle">Bereit.</p>
+  <div class="heatmap-layout">
+    <div id="heatmap-chart" role="img" aria-label="Heatmap der Quellen"></div>
+    <aside class="heatmap-sidebar">
+      <div class="heatmap-panel">
+        <h2>Timeline</h2>
+        <div id="timeline-chart" role="img" aria-label="Alert-Timeline"></div>
+      </div>
+      <div class="heatmap-panel" id="heatmap-meta">
+        <h2>Zusammenfassung</h2>
+        <dl class="heatmap-stats"></dl>
+      </div>
+    </aside>
+  </div>
+</section>
 {% endblock %}

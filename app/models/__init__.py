@@ -144,3 +144,14 @@ class Setting(Base):
 
     key: Mapped[str] = mapped_column(String(255), primary_key=True)
     value_json: Mapped[Optional[dict]] = mapped_column(JSON)
+
+class Pattern(Base):
+    __tablename__ = "patterns"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    label: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    top_terms: Mapped[Optional[list[str]]] = mapped_column(JSON)
+    anomaly_score: Mapped[Optional[float]] = mapped_column(Float)
+    item_ids: Mapped[Optional[list[int]]] = mapped_column(JSON)
+    meta: Mapped[Optional[dict]] = mapped_column(JSON)

@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block content %}
+<header>
+  <h1>Pattern Discovery</h1>
+</header>
+<form id="patterns-filters" class="filter-grid" autocomplete="off">
+  <div class="form-control">
+    <label for="patterns-window">Zeitraum</label>
+    <select id="patterns-window" name="window">
+      <option value="6h">6 Stunden</option>
+      <option value="24h" selected>24 Stunden</option>
+      <option value="7d">7 Tage</option>
+      <option value="30d">30 Tage</option>
+      <option value="all">Alles</option>
+    </select>
+  </div>
+
+  <div class="form-control">
+    <label for="patterns-limit">Anzahl Ergebnisse</label>
+    <input id="patterns-limit" name="limit" type="number" min="1" max="50" value="10">
+  </div>
+
+  <button type="button" id="patterns-reload" class="button-primary">Aktualisieren</button>
+</form>
+
+<section id="patterns-container">
+  <p class="status-message" data-state="idle">Bereit.</p>
+  <div id="patterns-list" class="pattern-grid" aria-live="polite"></div>
+</section>
+{% endblock %}
