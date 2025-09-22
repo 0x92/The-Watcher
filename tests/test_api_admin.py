@@ -4,6 +4,8 @@ import pytest
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from sqlalchemy import inspect
+
 from app import create_app
 
 from app.db import get_engine, get_session
@@ -18,6 +20,17 @@ def client_with_db(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("DATABASE_URL", db_url)
     engine = get_engine(db_url)
     Base.metadata.create_all(engine)
+    app = create_app()
+    app.config.update(TESTING=True, WTF_CSRF_ENABLED=False)
+    with app.test_client() as client:
+        yield client, db_url
+
+
+@pytest.fixture()
+def client_without_tables(tmp_path: Path, monkeypatch):
+    db_path = tmp_path / "empty.db"
+    db_url = f"sqlite:///{db_path}"
+    monkeypatch.setenv("DATABASE_URL", db_url)
     app = create_app()
     app.config.update(TESTING=True, WTF_CSRF_ENABLED=False)
     with app.test_client() as client:
@@ -63,6 +76,43 @@ def test_worker_settings_flow(client_with_db):
         assert setting.value_json["scrape_enabled"] is False
         assert setting.value_json["default_interval_minutes"] == 42
         assert setting.value_json["max_sources_per_cycle"] == 3
+    finally:
+        session.close()
+
+
+def test_worker_settings_initializes_table(client_without_tables):
+    client, db_url = client_without_tables
+    _login(client)
+
+    resp = client.get("/api/admin/worker-settings")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data["scrape_enabled"] is True
+
+    engine = get_engine(db_url)
+    assert inspect(engine).has_table("settings")
+
+    update_resp = client.put(
+        "/api/admin/worker-settings",
+        json={
+            "scrape_enabled": False,
+            "default_interval_minutes": 30,
+            "max_sources_per_cycle": 2,
+        },
+    )
+    assert update_resp.status_code == 200
+    updated = update_resp.get_json()
+    assert updated["scrape_enabled"] is False
+    assert updated["default_interval_minutes"] == 30
+    assert updated["max_sources_per_cycle"] == 2
+
+    session = get_session(db_url)
+    try:
+        setting = session.get(Setting, "worker.scrape")
+        assert setting is not None
+        assert setting.value_json["scrape_enabled"] is False
+        assert setting.value_json["default_interval_minutes"] == 30
+        assert setting.value_json["max_sources_per_cycle"] == 2
     finally:
         session.close()
 
