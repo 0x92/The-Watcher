@@ -6,10 +6,11 @@ import os
 from datetime import datetime, timedelta
 from typing import Dict
 
-from sqlalchemy import create_engine, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from celery_app import celery
+from app.db import get_session
 from app.models import Gematria, Item, Pattern, Source
 from app.services.alerts import evaluate_alerts as evaluate_alerts_service
 from app.services.gematria import compute_all, normalize
@@ -23,8 +24,9 @@ from app.services.nlp import cluster_embeddings, embed_items
 
 def _session_from_env() -> Session:
     """Create a SQLAlchemy session based on the DATABASE_URL env var."""
-    engine = create_engine(os.getenv("DATABASE_URL", "sqlite:///:memory:"))
-    return Session(engine)
+
+    database_url = os.getenv("DATABASE_URL")
+    return get_session(database_url)
 
 
 # --- Core logic ------------------------------------------------------------
