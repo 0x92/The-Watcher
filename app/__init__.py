@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import time
 from flask import Flask, Response, g, request
+from flask_login import current_user
 
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 
@@ -61,6 +62,24 @@ def create_app() -> Flask:
 
     limiter.limit("10/minute")(api_bp)
     limiter.limit("10/minute")(admin_api_bp)
+
+    from app.blueprints.ui import NAV_ITEMS, PAGE_PERMISSIONS
+
+    @app.context_processor
+    def inject_navigation() -> dict:
+        def _can_access(endpoint: str) -> bool:
+            required_roles = PAGE_PERMISSIONS.get(endpoint)
+            if not required_roles:
+                return current_user.is_authenticated
+            if not current_user.is_authenticated:
+                return False
+            return current_user.role in required_roles
+
+        accessible_items = [item for item in NAV_ITEMS if _can_access(item["endpoint"])]
+
+        return {
+            "navigation_items": accessible_items,
+        }
 
     @app.before_request
     def _start_timer() -> None:  # pragma: no cover - request timing

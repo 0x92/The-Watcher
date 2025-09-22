@@ -80,6 +80,33 @@ header.site-header {
   background: color-mix(in srgb, var(--color-primary) 12%, transparent);
 }
 
+.user-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.user-label {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.logout-form {
+  margin: 0;
+}
+
+.user-actions .button-primary,
+.user-actions .button-secondary {
+  text-decoration: none;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 360px;
+}
+
 .theme-toggle {
   display: inline-flex;
   align-items: center;

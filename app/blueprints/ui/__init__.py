@@ -5,25 +5,53 @@ import time
 from typing import List, Optional
 
 from flask import Blueprint, Response, current_app, render_template, request
+from flask_login import login_required
 
 from app.db import get_session
+from app.security import role_required
 from app.services.analytics import compute_heatmap
 from app.services.items import fetch_new_items, parse_iso_datetime
 
 ui_bp = Blueprint("ui", __name__)
 
 
+NAV_ITEMS = [
+    {"endpoint": "ui.overview", "label": "Overview", "roles": {"viewer", "analyst", "admin"}},
+    {"endpoint": "ui.stream", "label": "Stream", "roles": {"viewer", "analyst", "admin"}},
+    {"endpoint": "ui.heatmap", "label": "Heatmap", "roles": {"analyst", "admin"}},
+    {"endpoint": "ui.graph", "label": "Graph", "roles": {"analyst", "admin"}},
+    {"endpoint": "ui.alerts", "label": "Alerts", "roles": {"analyst", "admin"}},
+    {"endpoint": "ui.patterns", "label": "Patterns", "roles": {"analyst", "admin"}},
+    {"endpoint": "ui.admin", "label": "Admin", "roles": {"admin"}},
+]
+
+
+PAGE_PERMISSIONS = {item["endpoint"]: set(item["roles"]) for item in NAV_ITEMS}
+PAGE_PERMISSIONS.update(
+    {
+        "ui.stream_live": PAGE_PERMISSIONS["ui.stream"],
+        "ui.heatmap_stream": PAGE_PERMISSIONS["ui.heatmap"],
+    }
+)
+
+
 @ui_bp.route("/")
+@login_required
+@role_required(PAGE_PERMISSIONS["ui.overview"])
 def overview():
     return render_template("ui/overview.html")
 
 
 @ui_bp.route("/stream")
+@login_required
+@role_required(PAGE_PERMISSIONS["ui.stream"])
 def stream():
     return render_template("ui/stream.html")
 
 
 @ui_bp.route("/stream/live")
+@login_required
+@role_required(PAGE_PERMISSIONS["ui.stream_live"])
 def stream_live() -> Response:
     refresh_raw = request.args.get("refresh")
     try:
@@ -135,27 +163,40 @@ def stream_live() -> Response:
     return Response(event_stream(), mimetype="text/event-stream", headers=headers)
 
 
+__all__ = ["ui_bp", "NAV_ITEMS", "PAGE_PERMISSIONS"]
+
+
 @ui_bp.route("/heatmap")
+@login_required
+@role_required(PAGE_PERMISSIONS["ui.heatmap"])
 def heatmap():
     return render_template("ui/heatmap.html")
 
 
 @ui_bp.route("/graph")
+@login_required
+@role_required(PAGE_PERMISSIONS["ui.graph"])
 def graph():
     return render_template("ui/graph.html")
 
 
 @ui_bp.route("/alerts")
+@login_required
+@role_required(PAGE_PERMISSIONS["ui.alerts"])
 def alerts():
     return render_template("ui/alerts.html")
 
 
 @ui_bp.route("/admin")
+@login_required
+@role_required(PAGE_PERMISSIONS["ui.admin"])
 def admin():
     return render_template("ui/admin.html")
 
 
 @ui_bp.route("/patterns")
+@login_required
+@role_required(PAGE_PERMISSIONS["ui.patterns"])
 def patterns():
     return render_template("ui/patterns.html")
 
@@ -168,6 +209,8 @@ def _parse_sources_param(value: Optional[str]) -> Optional[List[str]]:
 
 
 @ui_bp.route("/stream/analytics/heatmap")
+@login_required
+@role_required(PAGE_PERMISSIONS["ui.heatmap_stream"])
 def heatmap_stream() -> Response:
     interval = request.args.get("interval", "24h")
     value_min = request.args.get("value_min", type=int) or 0

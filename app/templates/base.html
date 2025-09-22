@@ -15,14 +15,20 @@
           <span>The Watcher</span>
         </a>
         <nav class="primary-nav" aria-label="Hauptnavigation">
-          <a href="{{ url_for('ui.overview') }}" {% if request.endpoint == 'ui.overview' %}aria-current="page"{% endif %}>Overview</a>
-          <a href="{{ url_for('ui.stream') }}" {% if request.endpoint == 'ui.stream' %}aria-current="page"{% endif %}>Stream</a>
-          <a href="{{ url_for('ui.heatmap') }}" {% if request.endpoint == 'ui.heatmap' %}aria-current="page"{% endif %}>Heatmap</a>
-          <a href="{{ url_for('ui.graph') }}" {% if request.endpoint == 'ui.graph' %}aria-current="page"{% endif %}>Graph</a>
-          <a href="{{ url_for('ui.alerts') }}" {% if request.endpoint == 'ui.alerts' %}aria-current="page"{% endif %}>Alerts</a>
-          <a href="{{ url_for('ui.admin') }}" {% if request.endpoint == 'ui.admin' %}aria-current="page"{% endif %}>Admin</a>
-          <a href="{{ url_for('ui.patterns') }}" {% if request.endpoint == 'ui.patterns' %}aria-current="page"{% endif %}>Patterns</a>
+          {% for item in navigation_items %}
+            <a href="{{ url_for(item.endpoint) }}" {% if request.endpoint == item.endpoint %}aria-current="page"{% endif %}>{{ item.label }}</a>
+          {% endfor %}
         </nav>
+        <div class="user-actions">
+          {% if current_user.is_authenticated %}
+            <span class="user-label">{{ current_user.email }} · {{ current_user.role|capitalize }}</span>
+            <form method="post" action="{{ url_for('auth.logout') }}" class="logout-form">
+              <button type="submit" class="button-secondary">Logout</button>
+            </form>
+          {% else %}
+            <a class="button-primary" href="{{ url_for('auth.login', next=request.url) }}">Login</a>
+          {% endif %}
+        </div>
         <button class="theme-toggle" type="button" data-theme-toggle aria-pressed="false">
           <span aria-hidden="true">🌗</span>
           <span data-role="label">Light</span>

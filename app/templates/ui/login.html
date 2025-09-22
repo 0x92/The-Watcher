@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="page-shell" aria-labelledby="login-title">
+    <header>
+      <h1 id="login-title">Anmeldung</h1>
+    </header>
+    <form method="post" class="login-form" novalidate>
+      {% if next_url %}
+        <input type="hidden" name="next" value="{{ next_url }}">
+      {% endif %}
+      <div class="form-control">
+        <label for="email">E-Mail-Adresse</label>
+        <input id="email" type="email" name="email" autocomplete="username" required autofocus>
+      </div>
+      <div class="form-control">
+        <label for="password">Passwort</label>
+        <input id="password" type="password" name="password" autocomplete="current-password" required>
+      </div>
+      {% if error %}
+        <p class="status-message" data-state="error">{{ error }}</p>
+      {% endif %}
+      <div class="form-actions">
+        <button type="submit" class="button-primary">Login</button>
+      </div>
+      <p class="status-message">Demo-Zugänge: admin@example.com / adminpass, analyst@example.com / analystpass, viewer@example.com / viewerpass</p>
+    </form>
+  </section>
+{% endblock %}
