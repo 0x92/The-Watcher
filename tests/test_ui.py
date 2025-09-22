@@ -7,7 +7,7 @@ ROUTES = [
     ("/heatmap", "Heatmap"),
     ("/graph", "Graph"),
     ("/alerts", "Alerts"),
-    ("/admin", "Admin"),
+    ("/admin", "Administration"),
 ]
 
 

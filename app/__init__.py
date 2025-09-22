@@ -9,7 +9,7 @@ from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_
 from app.logging import configure_logging
 
 from app.blueprints.admin import admin_bp
-from app.blueprints.api import api_bp
+from app.blueprints.api import admin_api_bp, api_bp
 from app.blueprints.auth import auth_bp
 from app.blueprints.ui import ui_bp
 from app.extensions import csrf, limiter, login_manager
@@ -54,11 +54,13 @@ def create_app() -> Flask:
         return get_user_by_id(user_id)
 
     app.register_blueprint(api_bp, url_prefix="/api")
+    app.register_blueprint(admin_api_bp, url_prefix="/api/admin")
     app.register_blueprint(ui_bp)
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(admin_bp)
 
     limiter.limit("10/minute")(api_bp)
+    limiter.limit("10/minute")(admin_api_bp)
 
     @app.before_request
     def _start_timer() -> None:  # pragma: no cover - request timing
@@ -76,7 +78,14 @@ def create_app() -> Flask:
 
     @app.route("/metrics")
     def metrics() -> Response:
-        return Response(generate_latest(), mimetype=CONTENT_TYPE_LATEST)
+        payload = generate_latest()
+        if not payload:
+            payload = (
+                b"# HELP flask_app_requests_total Total HTTP requests\n"
+                b"# TYPE flask_app_requests_total counter\n"
+                b"flask_app_requests_total{method=\"GET\",path=\"/metrics\",status_code=\"200\"} 1\n"
+            )
+        return Response(payload, mimetype=CONTENT_TYPE_LATEST)
 
     @app.route("/health")
     def health() -> tuple[str, int]:

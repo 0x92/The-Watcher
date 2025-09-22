@@ -1,5 +1,6 @@
 from flask import Blueprint
 
+from .admin import admin_api_bp
 from .graph import graph
 from .health import health
 from .items import get_items
@@ -15,5 +16,5 @@ api_bp.add_url_rule("/patterns/latest", view_func=latest_patterns)
 api_bp.add_url_rule("/analytics/heatmap", view_func=heatmap)
 
 
-__all__ = ["api_bp"]
+__all__ = ["api_bp", "admin_api_bp"]
 

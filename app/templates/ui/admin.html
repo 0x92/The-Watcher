@@ -1,5 +1,86 @@
 {% extends 'base.html' %}
 {% block content %}
-<h1>Admin</h1>
-<p>Admin tools placeholder.</p>
+<section class="page-header">
+  <h1>Administration</h1>
+  <p>Steuere die Hintergrund-Worker und verwalte News-Quellen.</p>
+</section>
+
+<div class="admin-grid">
+  <section class="card admin-card" data-admin-worker>
+    <h2>Worker-Einstellungen</h2>
+    <p class="status-message" data-worker-status hidden></p>
+    <form class="admin-form" data-worker-form>
+      <label class="form-control" for="scrape-enabled">
+        <span>Automatisches Scrapen aktivieren</span>
+        <input type="checkbox" id="scrape-enabled" name="scrape_enabled" />
+      </label>
+      <label class="form-control" for="default-interval">
+        <span>Standardintervall (Minuten)</span>
+        <input
+          type="number"
+          id="default-interval"
+          name="default_interval_minutes"
+          min="1"
+          step="1"
+          required
+        />
+      </label>
+      <label class="form-control" for="max-sources">
+        <span>Max. Quellen pro Durchlauf (0 = unbegrenzt)</span>
+        <input
+          type="number"
+          id="max-sources"
+          name="max_sources_per_cycle"
+          min="0"
+          step="1"
+          required
+        />
+      </label>
+      <button type="submit" class="button primary">Speichern</button>
+    </form>
+  </section>
+
+  <section class="card admin-card" data-admin-sources>
+    <h2>Quellen &amp; RSS</h2>
+    <p class="status-message" data-source-status hidden></p>
+    <form class="admin-form" data-source-form>
+      <div class="form-row">
+        <label class="form-control" for="source-name">
+          <span>Name</span>
+          <input type="text" id="source-name" name="name" required />
+        </label>
+        <label class="form-control" for="source-type">
+          <span>Typ</span>
+          <select id="source-type" name="type">
+            <option value="rss">RSS</option>
+            <option value="atom">Atom</option>
+          </select>
+        </label>
+        <label class="form-control" for="source-interval">
+          <span>Intervall (Minuten)</span>
+          <input
+            type="number"
+            id="source-interval"
+            name="interval_minutes"
+            min="0"
+            step="1"
+          />
+        </label>
+      </div>
+      <label class="form-control" for="source-endpoint">
+        <span>Feed URL</span>
+        <input type="url" id="source-endpoint" name="endpoint" required />
+      </label>
+      <div class="form-actions">
+        <label class="inline-control" for="source-enabled">
+          <input type="checkbox" id="source-enabled" name="enabled" checked />
+          <span>Quelle direkt aktivieren</span>
+        </label>
+        <button type="submit" class="button">Quelle hinzufügen</button>
+      </div>
+    </form>
+
+    <div class="sources-list" data-sources-list aria-live="polite"></div>
+  </section>
+</div>
 {% endblock %}
