@@ -3,9 +3,13 @@
 from __future__ import annotations
 
 import re
-from typing import Dict, Iterable
+from typing import Dict, Iterable, List
 
-from .schemes import SCHEMES
+from .schemes import (
+    DEFAULT_ENABLED_SCHEMES,
+    SCHEMES,
+    available_scheme_metadata,
+)
 
 
 def normalize(text: str, *, ignore_pattern: str = r"[^A-Z]") -> str:
@@ -26,9 +30,24 @@ def compute_all(
     normalized = normalize(text, ignore_pattern=ignore_pattern)
     results: Dict[str, int] = {}
     for name in schemes:
-        mapping = SCHEMES[name]
+        mapping = SCHEMES.get(name)
+        if mapping is None:
+            continue
         results[name] = sum(mapping.get(ch, 0) for ch in normalized)
     return results
+
+
+def list_available_schemes() -> List[Dict[str, str]]:
+    """Return metadata describing the configured gematria schemes."""
+
+    return [
+        {
+            "key": definition.key,
+            "label": definition.label,
+            "description": definition.description,
+        }
+        for definition in available_scheme_metadata()
+    ]
 
 
 def digital_root(n: int) -> int:
@@ -54,4 +73,12 @@ def factor_signature(n: int) -> Dict[int, int]:
     return factors
 
 
-__all__ = ["SCHEMES", "normalize", "compute_all", "digital_root", "factor_signature"]
+__all__ = [
+    "DEFAULT_ENABLED_SCHEMES",
+    "SCHEMES",
+    "compute_all",
+    "digital_root",
+    "factor_signature",
+    "list_available_schemes",
+    "normalize",
+]

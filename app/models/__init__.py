@@ -59,22 +59,19 @@ class Item(Base):
     raw_json: Mapped[Optional[dict]] = mapped_column(JSON)
 
     source: Mapped["Source"] = relationship("Source", back_populates="items")
-    gematria: Mapped[Optional["Gematria"]] = relationship(
-        "Gematria", back_populates="item", uselist=False
-    )
+    gematria: Mapped[List["Gematria"]] = relationship("Gematria", back_populates="item")
     item_tags: Mapped[List["ItemTag"]] = relationship("ItemTag", back_populates="item")
 
 
 class Gematria(Base):
     __tablename__ = "gematria"
     __table_args__ = (
-        UniqueConstraint("item_id"),
         Index("ix_gematria_value", "value"),
         Index("ix_gematria_scheme", "scheme"),
     )
 
     item_id: Mapped[int] = mapped_column(ForeignKey("items.id"), primary_key=True)
-    scheme: Mapped[str] = mapped_column(String(50), nullable=False)
+    scheme: Mapped[str] = mapped_column(String(50), primary_key=True)
     value: Mapped[int] = mapped_column(Integer, nullable=False)
     token_count: Mapped[Optional[int]] = mapped_column(Integer)
     normalized_title: Mapped[Optional[str]] = mapped_column(Text)

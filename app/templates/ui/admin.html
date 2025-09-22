@@ -57,6 +57,44 @@
     </form>
   </section>
 
+  <section class="card admin-card" data-admin-gematria>
+    <div class="admin-card__header">
+      <div>
+        <h2>Gematria-Konfiguration</h2>
+        <p class="lead">
+          Lege fest, welche Ciphers berechnet werden und welche Zeichen berücksichtigt sind.
+        </p>
+      </div>
+      <div class="admin-card__header-actions">
+        <button type="button" class="button subtle" data-gematria-select-all>
+          Alle aktivieren
+        </button>
+        <button type="button" class="button subtle" data-gematria-reset>
+          Zurücksetzen
+        </button>
+      </div>
+    </div>
+    <p class="status-message" data-gematria-status hidden></p>
+    <form class="admin-form" data-gematria-form>
+      <fieldset class="scheme-grid" data-gematria-list>
+        <legend class="visually-hidden">Verfügbare Gematria-Ciphers</legend>
+      </fieldset>
+      <label class="form-control" for="gematria-ignore">
+        <span>Regex für erlaubte Zeichen (Leer lassen für Standard)</span>
+        <input
+          type="text"
+          id="gematria-ignore"
+          name="ignore_pattern"
+          placeholder="[^A-Z]"
+          autocomplete="off"
+        />
+      </label>
+      <div class="form-actions">
+        <button type="submit" class="button primary">Speichern</button>
+      </div>
+    </form>
+  </section>
+
   <section class="card admin-card" data-admin-sources>
     <div class="admin-card__header">
       <div>

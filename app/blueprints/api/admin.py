@@ -14,7 +14,14 @@ from app.db import get_session
 from app.extensions import csrf
 from app.models import Item, Source
 from app.security import role_required
-from app.services.settings import get_worker_settings, update_worker_settings
+from app.services.gematria import list_available_schemes
+from app.services.settings import (
+    DEFAULT_GEMATRIA_SETTINGS,
+    get_gematria_settings,
+    get_worker_settings,
+    update_gematria_settings,
+    update_worker_settings,
+)
 from app.services.workers import (
     WorkerCommandError,
     WorkerUnavailableError,
@@ -98,6 +105,18 @@ def _open_session():
     return get_session(_database_url())
 
 
+def _serialize_gematria_settings(settings: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "enabled": settings.get("enabled_schemes", []),
+        "ignore_pattern": settings.get("ignore_pattern"),
+        "available": list_available_schemes(),
+        "defaults": {
+            "enabled": list(DEFAULT_GEMATRIA_SETTINGS.enabled_schemes),
+            "ignore_pattern": DEFAULT_GEMATRIA_SETTINGS.ignore_pattern,
+        },
+    }
+
+
 @admin_api_bp.get("/worker-settings")
 @login_required
 @role_required("admin")
@@ -120,6 +139,32 @@ def update_worker_settings_endpoint():
         payload = request.get_json() or {}
         settings = update_worker_settings(session, payload)
         return jsonify(settings), 200
+    finally:
+        session.close()
+
+
+@admin_api_bp.get("/gematria-settings")
+@login_required
+@role_required("admin")
+def get_gematria_settings_endpoint():
+    session = _open_session()
+    try:
+        settings = get_gematria_settings(session)
+        return jsonify(_serialize_gematria_settings(settings)), 200
+    finally:
+        session.close()
+
+
+@admin_api_bp.put("/gematria-settings")
+@csrf.exempt
+@login_required
+@role_required("admin")
+def update_gematria_settings_endpoint():
+    session = _open_session()
+    try:
+        payload = request.get_json() or {}
+        settings = update_gematria_settings(session, payload)
+        return jsonify(_serialize_gematria_settings(settings)), 200
     finally:
         session.close()
 

@@ -67,6 +67,36 @@ def test_worker_settings_flow(client_with_db):
         session.close()
 
 
+def test_gematria_settings_flow(client_with_db):
+    client, db_url = client_with_db
+    _login(client)
+
+    resp = client.get("/api/admin/gematria-settings")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert isinstance(data["available"], list) and data["available"]
+    assert isinstance(data["enabled"], list) and data["enabled"]
+    assert "defaults" in data and isinstance(data["defaults"].get("enabled"), list)
+
+    update_resp = client.put(
+        "/api/admin/gematria-settings",
+        json={"enabled": ["prime", "sumerian"], "ignore_pattern": "[^A-ZÄÖÜ]"},
+    )
+    assert update_resp.status_code == 200
+    updated = update_resp.get_json()
+    assert updated["enabled"] == ["prime", "sumerian"]
+    assert updated["ignore_pattern"] == "[^A-ZÄÖÜ]"
+
+    session = get_session(db_url)
+    try:
+        setting = session.get(Setting, "gematria.settings")
+        assert setting is not None
+        assert setting.value_json["enabled_schemes"] == ["prime", "sumerian"]
+        assert setting.value_json["ignore_pattern"] == "[^A-ZÄÖÜ]"
+    finally:
+        session.close()
+
+
 def test_sources_crud(client_with_db):
     client, db_url = client_with_db
     _login(client)
