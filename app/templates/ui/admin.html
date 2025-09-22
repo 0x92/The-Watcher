@@ -6,6 +6,23 @@
 </section>
 
 <div class="admin-grid">
+  <section class="card admin-card" data-admin-worker-overview>
+    <div class="admin-card__header">
+      <div>
+        <h2>Worker-Status</h2>
+        <p class="lead">Überblick über aktive Hintergrundprozesse und laufende Tasks.</p>
+      </div>
+      <div class="admin-card__header-actions">
+        <button type="button" class="button" data-worker-refresh>Aktualisieren</button>
+        <span class="admin-card__meta" data-worker-updated>Stand: –</span>
+      </div>
+    </div>
+    <p class="status-message" data-worker-overview-status hidden></p>
+    <div class="workers-list" data-workers-list>
+      <p class="workers-empty">Noch keine Worker registriert.</p>
+    </div>
+  </section>
+
   <section class="card admin-card" data-admin-worker>
     <h2>Worker-Einstellungen</h2>
     <p class="status-message" data-worker-status hidden></p>
