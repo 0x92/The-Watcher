@@ -14,6 +14,7 @@ from app.models import Gematria, Item, Pattern, Source
 from app.services.alerts import evaluate_alerts as evaluate_alerts_service
 from app.services.gematria import compute_all, normalize
 from app.services.ingest import fetch
+from app.services.settings import get_worker_settings
 from app.services.nlp import cluster_embeddings, embed_items
 
 
@@ -70,6 +71,12 @@ def run_source(source_id: int, *, session: Session | None = None) -> int:
         session = _session_from_env()
         close = True
 
+    settings = get_worker_settings(session)
+    if not settings.get("scrape_enabled", True):
+        if close:
+            session.close()
+        return 0
+
     source = session.get(Source, source_id)
     if source is None:
         if close:
@@ -99,6 +106,40 @@ def run_source(source_id: int, *, session: Session | None = None) -> int:
     if close:
         session.close()
     return new_count
+
+
+def run_due_sources(*, session: Session | None = None) -> int:
+    """Execute scraping for sources that are due based on worker settings."""
+
+    close = False
+    if session is None:
+        session = _session_from_env()
+        close = True
+
+    settings = get_worker_settings(session)
+    if not settings.get("scrape_enabled", True):
+        if close:
+            session.close()
+        return 0
+
+    now = datetime.utcnow()
+    limit = settings.get("max_sources_per_cycle", 0) or 0
+    processed = 0
+
+    stmt = select(Source).where(Source.enabled.is_(True)).order_by(Source.last_run_at.asc())
+    for source in session.scalars(stmt):
+        if limit and processed >= limit:
+            break
+        interval = source.interval_sec or 0
+        if interval and source.last_run_at:
+            if source.last_run_at + timedelta(seconds=interval) > now:
+                continue
+        run_source(source.id, session=session)
+        processed += 1
+
+    if close:
+        session.close()
+    return processed
 
 
 def index_item_to_opensearch(item_id: int) -> int:  # pragma: no cover - placeholder
@@ -197,6 +238,11 @@ def run_source_task(source_id: int) -> int:
     return run_source(source_id)
 
 
+@celery.task(name="run_due_sources")
+def run_due_sources_task() -> int:
+    return run_due_sources()
+
+
 @celery.task(name="compute_gematria_for_item")
 def compute_gematria_for_item_task(item_id: int) -> Dict[str, int]:
     return compute_gematria_for_item(item_id)
@@ -231,11 +277,13 @@ def discover_patterns_task(
 
 __all__ = [
     "run_source",
+    "run_due_sources",
     "compute_gematria_for_item",
     "index_item_to_opensearch",
     "evaluate_alerts",
     "discover_patterns",
     "run_source_task",
+    "run_due_sources_task",
     "compute_gematria_for_item_task",
     "index_item_to_opensearch_task",
     "evaluate_alerts_task",
