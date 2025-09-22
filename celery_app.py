@@ -104,7 +104,24 @@ def ping() -> str:
 
 
 # Simple beat schedule placeholder
+# Periodic task schedule
 celery.conf.beat_schedule = {
-    "ping": {"task": ping.name, "schedule": timedelta(minutes=1)}
+    "ping": {"task": ping.name, "schedule": timedelta(minutes=1)},
+    # Regularly check which sources need to be scraped so that the UI shows data
+    # without requiring manual task invocation.
+    "ingest-due-sources": {
+        "task": "run_due_sources",
+        "schedule": timedelta(minutes=1),
+    },
+    # Evaluate alerts shortly after ingestion so the dashboard stays in sync.
+    "evaluate-alerts": {
+        "task": "evaluate_alerts",
+        "schedule": timedelta(minutes=2),
+    },
+    # Pattern discovery is slightly more expensive; run it less frequently.
+    "discover-patterns": {
+        "task": "discover_patterns",
+        "schedule": timedelta(minutes=15),
+    },
 }
 
