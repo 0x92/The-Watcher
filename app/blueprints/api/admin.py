@@ -13,6 +13,12 @@ from app.extensions import csrf
 from app.models import Source
 from app.security import role_required
 from app.services.settings import get_worker_settings, update_worker_settings
+from app.services.workers import (
+    WorkerCommandError,
+    WorkerUnavailableError,
+    execute_worker_command,
+    get_worker_overview,
+)
 
 
 admin_api_bp = Blueprint("api_admin", __name__)
@@ -89,6 +95,36 @@ def update_worker_settings_endpoint():
         return jsonify(settings), 200
     finally:
         session.close()
+
+
+@admin_api_bp.get("/workers")
+@login_required
+@role_required("admin")
+def list_workers_endpoint():
+    overview = get_worker_overview()
+    return jsonify(overview), 200
+
+
+@admin_api_bp.post("/workers/<path:worker_name>/control")
+@csrf.exempt
+@login_required
+@role_required("admin")
+def control_worker_endpoint(worker_name: str):
+    payload = request.get_json() or {}
+    action = (payload.get("action") or "").strip()
+    if not action:
+        return jsonify({"error": "action is required"}), 400
+
+    try:
+        result = execute_worker_command(worker_name, action)
+    except ValueError:
+        return jsonify({"error": "invalid action"}), 400
+    except WorkerUnavailableError as exc:
+        return jsonify({"error": str(exc)}), 404
+    except WorkerCommandError as exc:
+        return jsonify({"error": str(exc)}), 503
+
+    return jsonify(result), 200
 
 
 @admin_api_bp.get("/sources")

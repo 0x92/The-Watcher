@@ -7,6 +7,7 @@ import pytest
 from app import create_app
 from app.db import get_engine, get_session
 from app.models import Base, Setting
+from app.services.workers import WorkerCommandError, WorkerUnavailableError
 
 
 @pytest.fixture()
@@ -110,4 +111,83 @@ def test_sources_crud(client_with_db):
     final_resp = client.get("/api/admin/sources")
     assert final_resp.status_code == 200
     assert final_resp.get_json() == []
+
+
+def test_worker_overview_endpoint(client_with_db, monkeypatch):
+    client, _ = client_with_db
+    _login(client)
+
+    payload = {
+        "status": "ok",
+        "updated_at": "2024-01-01T00:00:00Z",
+        "workers": [{"id": "celery@host", "status": "online"}],
+    }
+    monkeypatch.setattr("app.blueprints.api.admin.get_worker_overview", lambda: payload)
+
+    resp = client.get("/api/admin/workers")
+    assert resp.status_code == 200
+    assert resp.get_json() == payload
+
+
+def test_worker_command_endpoint(client_with_db, monkeypatch):
+    client, _ = client_with_db
+    _login(client)
+
+    called = {}
+
+    def fake_execute(worker_name, action):
+        called["worker"] = worker_name
+        called["action"] = action
+        return {"status": "ok", "action": action, "message": "done"}
+
+    monkeypatch.setattr("app.blueprints.api.admin.execute_worker_command", fake_execute)
+
+    resp = client.post(
+        "/api/admin/workers/celery@host/control",
+        json={"action": "restart"},
+    )
+    assert resp.status_code == 200
+    body = resp.get_json()
+    assert body["action"] == "restart"
+    assert called == {"worker": "celery@host", "action": "restart"}
+
+    invalid_resp = client.post(
+        "/api/admin/workers/celery@host/control",
+        json={"action": ""},
+    )
+    assert invalid_resp.status_code == 400
+
+
+def test_worker_command_endpoint_handles_errors(client_with_db, monkeypatch):
+    client, _ = client_with_db
+    _login(client)
+
+    def raise_unavailable(*_args, **_kwargs):
+        raise WorkerUnavailableError("celery@host")
+
+    monkeypatch.setattr(
+        "app.blueprints.api.admin.execute_worker_command",
+        raise_unavailable,
+    )
+
+    unavailable = client.post(
+        "/api/admin/workers/celery@host/control",
+        json={"action": "start"},
+    )
+    assert unavailable.status_code == 404
+
+    def raise_command_error(*_args, **_kwargs):
+        raise WorkerCommandError("kaputt")
+
+    monkeypatch.setattr(
+        "app.blueprints.api.admin.execute_worker_command",
+        raise_command_error,
+    )
+
+    failed = client.post(
+        "/api/admin/workers/celery@host/control",
+        json={"action": "restart"},
+    )
+    assert failed.status_code == 503
+    assert "kaputt" in failed.get_json()["error"]
 
