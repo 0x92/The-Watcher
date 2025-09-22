@@ -302,7 +302,11 @@
 }
 
 .source-type-empty {
-=======
+  margin: 0;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
 .scheme-grid {
   display: grid;
   gap: 0.75rem;
@@ -424,10 +428,11 @@
 
 .source-latest__meta {
   font-size: 0.8rem;
-=======
+  color: var(--color-text-muted);
+}
+
 .scheme-empty {
   margin: 0;
-
   color: var(--color-text-muted);
 }
 
