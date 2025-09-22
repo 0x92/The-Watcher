@@ -115,8 +115,7 @@ def upgrade() -> None:
             ["item_id"],
             ["items.id"],
         ),
-        sa.PrimaryKeyConstraint("item_id"),
-        sa.UniqueConstraint("item_id"),
+        sa.PrimaryKeyConstraint("item_id", "scheme"),
     )
     op.create_index("ix_gematria_scheme", "gematria", ["scheme"], unique=False)
     op.create_index("ix_gematria_value", "gematria", ["value"], unique=False)

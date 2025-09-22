@@ -15,7 +15,7 @@ from app.models import Gematria, Item, Pattern, Source
 from app.services.alerts import evaluate_alerts as evaluate_alerts_service
 from app.services.gematria import compute_all, normalize
 from app.services.ingest import fetch
-from app.services.settings import get_worker_settings
+from app.services.settings import get_gematria_settings, get_worker_settings
 from app.services.nlp import cluster_embeddings, embed_items
 
 
@@ -47,23 +47,46 @@ def compute_gematria_for_item(
             session.close()
         return {}
 
-    values = compute_all(item.title)
-    scheme = "ordinal"
-    value = values[scheme]
-    normalized = normalize(item.title)
+    gematria_settings = get_gematria_settings(session)
+    enabled_schemes = gematria_settings.get("enabled_schemes", [])
+    ignore_pattern = gematria_settings.get("ignore_pattern", r"[^A-Z]")
+    values = compute_all(item.title, enabled_schemes, ignore_pattern=ignore_pattern)
+    normalized = normalize(item.title, ignore_pattern=ignore_pattern)
     token_count = len(item.title.split())
-    gem = Gematria(
-        item_id=item.id,
-        scheme=scheme,
-        value=value,
-        token_count=token_count,
-        normalized_title=normalized,
-    )
-    session.merge(gem)
+
+    existing = {
+        row.scheme: row
+        for row in session.query(Gematria).filter(Gematria.item_id == item.id).all()
+    }
+
+    computed: Dict[str, int] = {}
+    for scheme in enabled_schemes:
+        value = values.get(scheme, 0)
+        computed[scheme] = value
+        if scheme in existing:
+            entry = existing[scheme]
+            entry.value = value
+            entry.token_count = token_count
+            entry.normalized_title = normalized
+        else:
+            session.add(
+                Gematria(
+                    item_id=item.id,
+                    scheme=scheme,
+                    value=value,
+                    token_count=token_count,
+                    normalized_title=normalized,
+                )
+            )
+
+    for scheme, row in existing.items():
+        if scheme not in enabled_schemes:
+            session.delete(row)
+
     session.commit()
     if close:
         session.close()
-    return {scheme: value}
+    return computed
 
 
 def run_source(source_id: int, *, session: Session | None = None) -> int:

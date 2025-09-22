@@ -1,4 +1,5 @@
 const WORKER_SETTINGS_ENDPOINT = "/api/admin/worker-settings";
+const GEMATRIA_SETTINGS_ENDPOINT = "/api/admin/gematria-settings";
 const WORKERS_ENDPOINT = "/api/admin/workers";
 const SOURCES_ENDPOINT = "/api/admin/sources";
 
@@ -88,14 +89,24 @@ export function initAdmin() {
   const sourceForm = document.querySelector("[data-source-form]");
   const sourceStatus = document.querySelector("[data-source-status]");
   const sourcesList = document.querySelector("[data-sources-list]");
+  const gematriaForm = document.querySelector("[data-gematria-form]");
+  const gematriaStatus = document.querySelector("[data-gematria-status]");
+  const gematriaList = document.querySelector("[data-gematria-list]");
+  const gematriaSelectAll = document.querySelector("[data-gematria-select-all]");
+  const gematriaReset = document.querySelector("[data-gematria-reset]");
 
-  if (!workerForm && !sourceForm && !sourcesList && !workersList) {
+  if (!workerForm && !sourceForm && !sourcesList && !workersList && !gematriaForm) {
     return;
   }
 
   let cachedSources = [];
   let cachedWorkers = [];
   let workerMeta = { updatedAt: null, status: "idle", message: "" };
+  let gematriaState = {
+    available: [],
+    enabled: [],
+    defaults: { enabled: [], ignore_pattern: "" },
+  };
 
   async function loadWorkerSettings() {
     if (!workerForm) {
@@ -150,6 +161,163 @@ export function initAdmin() {
       updateStatus(workerStatus, "Einstellungen gespeichert", "success");
     } catch (error) {
       updateStatus(workerStatus, error.message || "Speichern fehlgeschlagen", "error");
+    }
+  }
+
+  function renderGematriaSchemes(available, enabled) {
+    if (!gematriaList) {
+      return;
+    }
+    gematriaList.innerHTML = "";
+    if (!Array.isArray(available) || available.length === 0) {
+      gematriaList.innerHTML = '<p class="scheme-empty">Keine Ciphers verfügbar.</p>';
+      return;
+    }
+
+    const enabledSet = new Set(Array.isArray(enabled) ? enabled : []);
+    available.forEach((scheme) => {
+      const wrapper = document.createElement("label");
+      wrapper.className = "scheme-option";
+      wrapper.dataset.schemeKey = scheme.key;
+
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.name = "enabled_schemes";
+      input.value = scheme.key;
+      input.checked = enabledSet.has(scheme.key);
+
+      const body = document.createElement("div");
+      body.className = "scheme-option__body";
+
+      const title = document.createElement("span");
+      title.className = "scheme-option__title";
+      title.textContent = scheme.label || scheme.key;
+
+      const meta = document.createElement("span");
+      meta.className = "scheme-option__meta";
+      meta.textContent = scheme.key;
+
+      body.appendChild(title);
+      body.appendChild(meta);
+      if (scheme.description) {
+        const description = document.createElement("p");
+        description.className = "scheme-option__description";
+        description.textContent = scheme.description;
+        body.appendChild(description);
+      }
+
+      wrapper.appendChild(input);
+      wrapper.appendChild(body);
+      gematriaList.appendChild(wrapper);
+    });
+  }
+
+  function setGematriaSelection(keys) {
+    if (!gematriaForm) {
+      return;
+    }
+    const selected = new Set(Array.isArray(keys) ? keys : []);
+    const checkboxes = gematriaForm.querySelectorAll("input[name='enabled_schemes']");
+    checkboxes.forEach((checkbox) => {
+      checkbox.checked = selected.has(checkbox.value);
+    });
+  }
+
+  async function loadGematriaSettings() {
+    if (!gematriaForm) {
+      return;
+    }
+    updateStatus(gematriaStatus, "Lade Gematria…", "loading");
+    try {
+      const resp = await fetch(GEMATRIA_SETTINGS_ENDPOINT, { credentials: "same-origin" });
+      if (!resp.ok) {
+        throw new Error(`Serverfehler (${resp.status})`);
+      }
+      const data = await resp.json();
+      gematriaState = {
+        available: Array.isArray(data.available) ? data.available : [],
+        enabled: Array.isArray(data.enabled) ? data.enabled : [],
+        defaults: {
+          enabled: Array.isArray(data?.defaults?.enabled) ? data.defaults.enabled : [],
+          ignore_pattern:
+            typeof data?.defaults?.ignore_pattern === "string"
+              ? data.defaults.ignore_pattern
+              : "",
+        },
+      };
+      renderGematriaSchemes(gematriaState.available, gematriaState.enabled);
+      if (gematriaForm.elements.ignore_pattern) {
+        gematriaForm.elements.ignore_pattern.value = data.ignore_pattern || "";
+        gematriaForm.elements.ignore_pattern.placeholder =
+          gematriaState.defaults.ignore_pattern || "[^A-Z]";
+      }
+      updateStatus(gematriaStatus, "", "idle");
+    } catch (error) {
+      updateStatus(
+        gematriaStatus,
+        error.message || "Gematria-Einstellungen konnten nicht geladen werden",
+        "error",
+      );
+    }
+  }
+
+  async function saveGematriaSettings(event) {
+    event.preventDefault();
+    if (!gematriaForm) {
+      return;
+    }
+    updateStatus(gematriaStatus, "Speichere…", "loading");
+    const formData = new FormData(gematriaForm);
+    const payload = {
+      enabled: formData.getAll("enabled_schemes"),
+      ignore_pattern: gematriaForm.elements.ignore_pattern.value.trim(),
+    };
+
+    try {
+      const resp = await fetch(GEMATRIA_SETTINGS_ENDPOINT, {
+        method: "PUT",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        throw new Error(data.error || `Serverfehler (${resp.status})`);
+      }
+      gematriaState.available = Array.isArray(data.available) ? data.available : gematriaState.available;
+      gematriaState.enabled = Array.isArray(data.enabled) ? data.enabled : [];
+      if (data.defaults) {
+        gematriaState.defaults = {
+          enabled: Array.isArray(data.defaults.enabled) ? data.defaults.enabled : [],
+          ignore_pattern:
+            typeof data.defaults.ignore_pattern === "string"
+              ? data.defaults.ignore_pattern
+              : gematriaState.defaults.ignore_pattern,
+        };
+      }
+      renderGematriaSchemes(gematriaState.available, gematriaState.enabled);
+      if (gematriaForm.elements.ignore_pattern) {
+        gematriaForm.elements.ignore_pattern.value = data.ignore_pattern || "";
+        gematriaForm.elements.ignore_pattern.placeholder =
+          gematriaState.defaults.ignore_pattern || "[^A-Z]";
+      }
+      updateStatus(gematriaStatus, "Einstellungen gespeichert", "success");
+    } catch (error) {
+      updateStatus(gematriaStatus, error.message || "Speichern fehlgeschlagen", "error");
+    }
+  }
+
+  function selectAllGematriaSchemes() {
+    const allKeys = gematriaState.available.map((scheme) => scheme.key);
+    setGematriaSelection(allKeys);
+  }
+
+  function resetGematriaSchemes() {
+    setGematriaSelection(gematriaState.defaults.enabled || []);
+    if (gematriaForm && gematriaForm.elements.ignore_pattern) {
+      gematriaForm.elements.ignore_pattern.value = gematriaState.defaults.ignore_pattern || "";
+      gematriaForm.elements.ignore_pattern.placeholder =
+        gematriaState.defaults.ignore_pattern || "[^A-Z]";
     }
   }
 
@@ -459,6 +627,23 @@ export function initAdmin() {
     } catch (error) {
       updateStatus(sourceStatus, error.message || "Quelle konnte nicht entfernt werden", "error");
     }
+  }
+
+  if (gematriaForm) {
+    gematriaForm.addEventListener("submit", saveGematriaSettings);
+    loadGematriaSettings();
+  }
+
+  if (gematriaSelectAll) {
+    gematriaSelectAll.addEventListener("click", () => {
+      selectAllGematriaSchemes();
+    });
+  }
+
+  if (gematriaReset) {
+    gematriaReset.addEventListener("click", () => {
+      resetGematriaSchemes();
+    });
   }
 
   if (workerForm) {
