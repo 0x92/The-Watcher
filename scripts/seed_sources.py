@@ -7,7 +7,17 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from app.models import Alert, Base, Source
+try:  # pragma: no cover - defensive import setup
+    from app.models import Alert, Base, Source
+except ModuleNotFoundError:  # pragma: no cover - ensure repo root on path
+    import sys
+    from pathlib import Path
+
+    repo_root = Path(__file__).resolve().parents[1]
+    if str(repo_root) not in sys.path:
+        sys.path.insert(0, str(repo_root))
+
+    from app.models import Alert, Base, Source
 
 
 def _session_from_env() -> Session:
