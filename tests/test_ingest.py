@@ -6,6 +6,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from app.models import Base, Source, Item, Gematria, Setting
+from app.services.gematria import DEFAULT_ENABLED_SCHEMES
 from app.services.ingest import fetch
 from app.services.ingest import rss as rss_module
 from app.tasks import ingest as ingest_tasks
@@ -50,12 +51,20 @@ def test_run_source_creates_items_and_gematria(tmp_path):
     created = run_source(source_id=source.id, session=session)
     assert created == 2
     assert session.query(Item).count() == 2
-    assert session.query(Gematria).count() == 2
+    expected_per_item = len(DEFAULT_ENABLED_SCHEMES)
+    items = session.query(Item).all()
+    assert session.query(Gematria).count() == len(items) * expected_per_item
+    values = {
+        (row.item_id, row.scheme): row.value
+        for row in session.query(Gematria).order_by(Gematria.item_id, Gematria.scheme)
+    }
+    assert all((item.id, scheme) in values for scheme in DEFAULT_ENABLED_SCHEMES for item in items)
 
     # running again should not create duplicates
     created_again = run_source(source_id=source.id, session=session)
     assert created_again == 0
-    assert session.query(Item).count() == 2
+    assert session.query(Item).count() == len(items)
+    assert session.query(Gematria).count() == len(items) * expected_per_item
 
 
 def test_run_source_respects_worker_settings(tmp_path):

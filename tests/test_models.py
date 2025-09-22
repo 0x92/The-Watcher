@@ -56,8 +56,13 @@ def test_gematria_relationship(session: Session):
     session.add(gem)
     session.commit()
 
-    fetched = session.get(Gematria, item.id)
+    session.refresh(item)
+    fetched = session.get(Gematria, (item.id, "ordinal"))
+    assert fetched is not None
     assert fetched.item.id == item.id
+    assert fetched.scheme == "ordinal"
+    assert fetched.value == 42
+    assert len(item.gematria) == 1
 
 
 def test_tag_association(session: Session):
