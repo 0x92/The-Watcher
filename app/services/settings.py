@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List
 
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.models import Setting
@@ -34,6 +35,19 @@ class GematriaSettingsDefaults:
 
 DEFAULT_GEMATRIA_SETTINGS = GematriaSettingsDefaults()
 GEMATRIA_SETTING_KEY = "gematria.settings"
+
+
+def _ensure_settings_table(session: Session) -> None:
+    """Create the settings table on demand when it is missing."""
+
+    bind = session.get_bind()
+    if bind is None:
+        return
+    try:
+        Setting.__table__.create(bind=bind, checkfirst=True)
+    except SQLAlchemyError:
+        session.rollback()
+        Setting.__table__.create(bind=bind, checkfirst=True)
 
 
 def _coerce_bool(value: Any, default: bool) -> bool:
@@ -132,6 +146,7 @@ def _merge_gematria_defaults(raw: Dict[str, Any] | None) -> Dict[str, Any]:
 def get_worker_settings(session: Session) -> Dict[str, Any]:
     """Return worker scraping settings merged with defaults."""
 
+    _ensure_settings_table(session)
     setting = session.get(Setting, WORKER_SETTING_KEY)
     data = setting.value_json if setting and isinstance(setting.value_json, dict) else None
     return _merge_with_defaults(data)
@@ -140,6 +155,7 @@ def get_worker_settings(session: Session) -> Dict[str, Any]:
 def update_worker_settings(session: Session, values: Dict[str, Any]) -> Dict[str, Any]:
     """Persist worker settings and return the sanitized payload."""
 
+    _ensure_settings_table(session)
     merged = get_worker_settings(session)
     if "scrape_enabled" in values:
         merged["scrape_enabled"] = _coerce_bool(
@@ -166,6 +182,7 @@ def update_worker_settings(session: Session, values: Dict[str, Any]) -> Dict[str
 def get_gematria_settings(session: Session) -> Dict[str, Any]:
     """Return gematria settings merged with defaults."""
 
+    _ensure_settings_table(session)
     setting = session.get(Setting, GEMATRIA_SETTING_KEY)
     data = setting.value_json if setting and isinstance(setting.value_json, dict) else None
     return _merge_gematria_defaults(data)
@@ -174,6 +191,7 @@ def get_gematria_settings(session: Session) -> Dict[str, Any]:
 def update_gematria_settings(session: Session, values: Dict[str, Any]) -> Dict[str, Any]:
     """Persist gematria settings and return the sanitized payload."""
 
+    _ensure_settings_table(session)
     merged = get_gematria_settings(session)
 
     enabled_values = values.get("enabled_schemes")
