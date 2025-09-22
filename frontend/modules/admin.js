@@ -106,23 +106,21 @@ export function initAdmin() {
   const sourceFilterReset = document.querySelector("[data-source-filter-reset]");
   const sourceRefresh = document.querySelector("[data-source-refresh]");
 
-  if (
-    !workerForm &&
-    !sourceForm &&
-    !sourcesList &&
-    !workersList &&
-    !sourceFilterForm &&
-    !sourceStats
-  ) {
-
   const gematriaForm = document.querySelector("[data-gematria-form]");
   const gematriaStatus = document.querySelector("[data-gematria-status]");
   const gematriaList = document.querySelector("[data-gematria-list]");
   const gematriaSelectAll = document.querySelector("[data-gematria-select-all]");
   const gematriaReset = document.querySelector("[data-gematria-reset]");
 
-  if (!workerForm && !sourceForm && !sourcesList && !workersList && !gematriaForm) {
-
+  if (
+    !workerForm &&
+    !sourceForm &&
+    !sourcesList &&
+    !workersList &&
+    !sourceFilterForm &&
+    !sourceStats &&
+    !gematriaForm
+  ) {
     return;
   }
 
