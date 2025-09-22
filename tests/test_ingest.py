@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.models import Base, Source, Item, Gematria, Setting
 from app.services.ingest import fetch
 from app.services.ingest import rss as rss_module
+from app.tasks import ingest as ingest_tasks
 from app.tasks.ingest import run_source, run_due_sources
 
 
@@ -130,3 +131,24 @@ def test_fetch_uses_sample_feed_when_http_fails(monkeypatch):
     assert entries == sample_entries  # bundled sample feed should provide fallback items
     assert etag is None
     assert modified is None
+
+
+def test_session_from_env_respects_database_url(monkeypatch, tmp_path):
+    custom_url = f"sqlite:///{tmp_path}/worker.db"
+    monkeypatch.setenv("DATABASE_URL", custom_url)
+
+    session = ingest_tasks._session_from_env()
+    try:
+        assert str(session.get_bind().url) == custom_url
+    finally:
+        session.close()
+
+
+def test_session_from_env_uses_shared_default(monkeypatch):
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+
+    session = ingest_tasks._session_from_env()
+    try:
+        assert str(session.get_bind().url) == "sqlite:///app.db"
+    finally:
+        session.close()
