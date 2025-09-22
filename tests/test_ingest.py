@@ -6,6 +6,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from app.models import Base, Source, Item, Gematria, Setting
+from app.services.ingest import fetch
+from app.services.ingest import rss as rss_module
 from app.tasks.ingest import run_source, run_due_sources
 
 
@@ -91,3 +93,40 @@ def test_run_due_sources_respects_limits(tmp_path):
     # Only one source should have executed so we expect exactly one last_run_at value
     executed = session.query(Source).filter(Source.last_run_at.isnot(None)).count()
     assert executed == 1
+
+
+def test_fetch_uses_sample_feed_when_http_fails(monkeypatch):
+    original_parse = rss_module.feedparser.parse
+
+    class Dummy(dict):
+        def __init__(self):
+            super().__init__()
+            self.entries: list[dict] = []
+
+        def get(self, key, default=None):
+            return super().get(key, default)
+
+    def fake_parse(url, *args, **kwargs):
+        if isinstance(url, (bytes, bytearray)):
+            return original_parse(url, *args, **kwargs)
+        if url == "https://example.com/fail":
+            dummy = Dummy()
+            dummy["entries"] = []
+            dummy["status"] = 503
+            return dummy
+        return original_parse(url, *args, **kwargs)
+
+    monkeypatch.setattr(rss_module.feedparser, "parse", fake_parse)
+    monkeypatch.setattr(rss_module, "_fetch_with_requests", lambda *_, **__: ([], None, None))
+
+    sample_entries = [
+        rss_module.FeedEntry(
+            title="Fallback", url="https://example.com/fallback", published_at=None, dedupe_hash="abc"
+        )
+    ]
+    monkeypatch.setattr(rss_module, "_load_sample_entries", lambda *_: sample_entries)
+
+    entries, etag, modified = fetch("https://example.com/fail")
+    assert entries == sample_entries  # bundled sample feed should provide fallback items
+    assert etag is None
+    assert modified is None
