@@ -98,11 +98,13 @@ celery.conf.update(flask_app.config)
 # Import task modules so Celery discovers them
 import app.tasks.ingest  # noqa: F401,E402
 
-# Simple beat schedule placeholder
-celery.conf.beat_schedule = {"ping": {"task": "ping", "schedule": timedelta(minutes=1)}}
-
-
 @celery.task
 def ping() -> str:
     return "pong"
+
+
+# Simple beat schedule placeholder
+celery.conf.beat_schedule = {
+    "ping": {"task": ping.name, "schedule": timedelta(minutes=1)}
+}
 
