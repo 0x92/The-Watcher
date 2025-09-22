@@ -1,5 +1,59 @@
 {% extends 'base.html' %}
 {% block content %}
-<h1>Stream</h1>
-<p>Live feed placeholder.</p>
+<section class="page-shell">
+  <header>
+    <div>
+      <h1>Stream</h1>
+      <p class="lead">Live-Feed der aktuellsten Items aus allen Quellen.</p>
+    </div>
+    <p class="status-message" data-stream-status data-state="loading">Verbindung wird initialisiert...</p>
+  </header>
+
+  <form class="filter-grid" data-stream-filter>
+    <div class="form-control">
+      <label for="stream-query">Suche</label>
+      <input id="stream-query" type="search" name="query" placeholder="Titel oder Stichwort" autocomplete="off" />
+    </div>
+    <div class="form-control">
+      <label for="stream-source">Quelle</label>
+      <input id="stream-source" type="text" name="source" placeholder="z. B. Reuters" autocomplete="off" />
+    </div>
+    <div class="form-control">
+      <label for="stream-lang">Sprache</label>
+      <input id="stream-lang" type="text" name="lang" placeholder="de" maxlength="8" autocomplete="off" />
+    </div>
+    <div class="form-control">
+      <label for="stream-scheme">Schema</label>
+      <input id="stream-scheme" type="text" name="scheme" placeholder="ordinal" autocomplete="off" />
+    </div>
+    <div class="form-control">
+      <label for="stream-value">Gematria-Wert</label>
+      <input id="stream-value" type="number" name="value" inputmode="numeric" min="0" step="1" />
+    </div>
+    <div class="form-control">
+      <label for="stream-range">Zeitraum</label>
+      <select id="stream-range" name="range">
+        <option value="1h">Letzte Stunde</option>
+        <option value="6h">Letzte 6 Stunden</option>
+        <option value="12h">Letzte 12 Stunden</option>
+        <option value="24h" selected>Letzte 24 Stunden</option>
+        <option value="72h">Letzte 3 Tage</option>
+      </select>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="button-primary">Filter anwenden</button>
+      <button type="reset" class="button-secondary" data-stream-reset>Zurücksetzen</button>
+    </div>
+  </form>
+
+  <section class="feed-panel" data-stream-feed>
+    <header class="feed-panel__header">
+      <h2>Live Feed</h2>
+      <small data-stream-counter>0 Einträge</small>
+    </header>
+    <ul class="feed-list" data-stream-list aria-live="polite" aria-busy="true">
+      <li class="empty-state">Keine Einträge gefunden.</li>
+    </ul>
+  </section>
+</section>
 {% endblock %}
