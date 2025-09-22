@@ -37,12 +37,12 @@ def create_app() -> Flask:
         sentry_sdk.init(dsn=dsn, integrations=[FlaskIntegration()])
 
     app = Flask(__name__)
-    app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret")
-    app.config.update(
-        SESSION_COOKIE_HTTPONLY=True,
-        SESSION_COOKIE_SECURE=True,
-        SESSION_COOKIE_SAMESITE="Lax",
-    )
+    app.config.from_object("config.Config")
+
+    # Ensure a development-friendly secret key when none has been configured.
+    app.config.setdefault("SECRET_KEY", os.getenv("SECRET_KEY", "dev-secret"))
+    app.config.setdefault("SESSION_COOKIE_HTTPONLY", True)
+    app.config.setdefault("SESSION_COOKIE_SAMESITE", "Lax")
 
     login_manager.init_app(app)
     csrf.init_app(app)

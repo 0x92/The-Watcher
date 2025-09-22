@@ -90,9 +90,10 @@ def _task_postrun_handler(task_id: str, task, **_kwargs) -> None:  # pragma: no 
 
 
 flask_app = create_app()
-celery = Celery(
-    __name__, broker=flask_app.config.get("REDIS_URL", "redis://redis:6379/0")
+broker_url = flask_app.config.get("REDIS_URL") or os.getenv(
+    "REDIS_URL", "redis://localhost:6379/0"
 )
+celery = Celery(__name__, broker=broker_url)
 celery.conf.update(flask_app.config)
 
 # Import task modules so Celery discovers them
