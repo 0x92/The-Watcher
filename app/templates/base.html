@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>The Watcher</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='dist/assets/style.css') }}">
+    <script type="module" defer src="{{ url_for('static', filename='dist/main.js') }}"></script>
+  </head>
+  <body data-page="{{ request.endpoint }}">
+    <header class="site-header">
+      <div class="nav-wrapper">
+        <a class="brand" href="{{ url_for('ui.overview') }}">
+          <span class="brand-icon" aria-hidden="true">W</span>
+          <span>The Watcher</span>
+        </a>
+        <nav class="primary-nav" aria-label="Hauptnavigation">
+          <a href="{{ url_for('ui.overview') }}" {% if request.endpoint == 'ui.overview' %}aria-current="page"{% endif %}>Overview</a>
+          <a href="{{ url_for('ui.stream') }}" {% if request.endpoint == 'ui.stream' %}aria-current="page"{% endif %}>Stream</a>
+          <a href="{{ url_for('ui.heatmap') }}" {% if request.endpoint == 'ui.heatmap' %}aria-current="page"{% endif %}>Heatmap</a>
+          <a href="{{ url_for('ui.graph') }}" {% if request.endpoint == 'ui.graph' %}aria-current="page"{% endif %}>Graph</a>
+          <a href="{{ url_for('ui.alerts') }}" {% if request.endpoint == 'ui.alerts' %}aria-current="page"{% endif %}>Alerts</a>
+          <a href="{{ url_for('ui.admin') }}" {% if request.endpoint == 'ui.admin' %}aria-current="page"{% endif %}>Admin</a>
+          <a href="{{ url_for('ui.patterns') }}" {% if request.endpoint == 'ui.patterns' %}aria-current="page"{% endif %}>Patterns</a>
+        </nav>
+        <button class="theme-toggle" type="button" data-theme-toggle aria-pressed="false">
+          <span aria-hidden="true">🌗</span>
+          <span data-role="label">Light</span>
+        </button>
+      </div>
+    </header>
+    <main class="site-main">
+      {% block content %}{% endblock %}
+    </main>
+  </body>
+</html>
