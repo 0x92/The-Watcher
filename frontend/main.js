@@ -7,6 +7,7 @@ import { initPatterns } from "./modules/patterns.js";
 import { initHeatmap } from "./modules/heatmap.js";
 import { initOverview } from "./modules/overview.js";
 import { initAdmin } from "./modules/admin.js";
+import { initStream } from "./modules/stream.js";
 
 const page = document.body.dataset.page || "";
 
@@ -16,6 +17,7 @@ const registry = {
   "ui.heatmap": initHeatmap,
   "ui.overview": initOverview,
   "ui.admin": initAdmin,
+  "ui.stream": initStream,
 };
 
 function initThemeToggle() {
