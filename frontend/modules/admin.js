@@ -40,6 +40,17 @@ function formatTimestamp(value) {
   return `Stand: ${parsed.toLocaleString()}`;
 }
 
+function formatDate(value) {
+  if (!value) {
+    return "–";
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return "–";
+  }
+  return parsed.toLocaleString();
+}
+
 function renderTaskGroup(label, tasks) {
   if (!Array.isArray(tasks) || tasks.length === 0) {
     return `<div class="worker-task-group"><h3>${label}</h3><p class="worker-task-empty">Keine Einträge.</p></div>`;
@@ -89,6 +100,21 @@ export function initAdmin() {
   const sourceForm = document.querySelector("[data-source-form]");
   const sourceStatus = document.querySelector("[data-source-status]");
   const sourcesList = document.querySelector("[data-sources-list]");
+
+  const sourceStats = document.querySelector("[data-source-stats]");
+  const sourceFilterForm = document.querySelector("[data-source-filter-form]");
+  const sourceFilterReset = document.querySelector("[data-source-filter-reset]");
+  const sourceRefresh = document.querySelector("[data-source-refresh]");
+
+  if (
+    !workerForm &&
+    !sourceForm &&
+    !sourcesList &&
+    !workersList &&
+    !sourceFilterForm &&
+    !sourceStats
+  ) {
+
   const gematriaForm = document.querySelector("[data-gematria-form]");
   const gematriaStatus = document.querySelector("[data-gematria-status]");
   const gematriaList = document.querySelector("[data-gematria-list]");
@@ -96,17 +122,23 @@ export function initAdmin() {
   const gematriaReset = document.querySelector("[data-gematria-reset]");
 
   if (!workerForm && !sourceForm && !sourcesList && !workersList && !gematriaForm) {
+
     return;
   }
 
   let cachedSources = [];
   let cachedWorkers = [];
   let workerMeta = { updatedAt: null, status: "idle", message: "" };
+
+  let sourceMeta = { meta: {}, filters: {} };
+  let sourceFilters = { query: "", type: "all", status: "all" };
+
   let gematriaState = {
     available: [],
     enabled: [],
     defaults: { enabled: [], ignore_pattern: "" },
   };
+
 
   async function loadWorkerSettings() {
     if (!workerForm) {
@@ -477,20 +509,85 @@ export function initAdmin() {
     }
   }
 
+  function buildSourceQueryString() {
+    const params = new URLSearchParams();
+    if (sourceFilters.query) {
+      params.set("q", sourceFilters.query);
+    }
+    if (sourceFilters.type && sourceFilters.type !== "all") {
+      params.set("type", sourceFilters.type);
+    }
+    if (sourceFilters.status && sourceFilters.status !== "all") {
+      params.set("enabled", sourceFilters.status === "active" ? "true" : "false");
+    }
+    return params.toString();
+  }
+
+  function syncSourceFilterForm() {
+    if (!sourceFilterForm) {
+      return;
+    }
+    if (sourceFilterForm.elements.query) {
+      sourceFilterForm.elements.query.value = sourceFilters.query || "";
+    }
+    if (sourceFilterForm.elements.type) {
+      sourceFilterForm.elements.type.value = sourceFilters.type || "all";
+    }
+    if (sourceFilterForm.elements.status) {
+      sourceFilterForm.elements.status.value = sourceFilters.status || "all";
+    }
+  }
+
   async function loadSources() {
     if (!sourcesList) {
       return;
     }
     updateStatus(sourceStatus, "Lade Quellen…", "loading");
     try {
-      const resp = await fetch(SOURCES_ENDPOINT, { credentials: "same-origin" });
+      const query = buildSourceQueryString();
+      const url = query ? `${SOURCES_ENDPOINT}?${query}` : SOURCES_ENDPOINT;
+      const resp = await fetch(url, { credentials: "same-origin" });
       if (!resp.ok) {
         throw new Error(`Serverfehler (${resp.status})`);
       }
       const data = await resp.json();
-      cachedSources = Array.isArray(data) ? data : [];
+      cachedSources = Array.isArray(data.sources) ? data.sources : [];
+      sourceMeta = {
+        meta: data.meta || {},
+        filters: data.filters || {},
+      };
+
+      if (data.filters) {
+        const nextFilters = {
+          query: data.filters.query || "",
+          type:
+            Array.isArray(data.filters.types) && data.filters.types.length
+              ? data.filters.types[0]
+              : "all",
+          status:
+            data.filters.enabled === true
+              ? "active"
+              : data.filters.enabled === false
+                ? "inactive"
+                : "all",
+        };
+        sourceFilters = nextFilters;
+        syncSourceFilterForm();
+      }
+
       renderSources();
-      updateStatus(sourceStatus, "", "idle");
+      renderSourceStats();
+
+      const meta = sourceMeta.meta || {};
+      if (meta.filters_applied && !cachedSources.length && (meta.total_sources_all || 0) > 0) {
+        updateStatus(
+          sourceStatus,
+          `Keine Quellen für die aktuellen Filter gefunden (Gesamt: ${meta.total_sources_all}).`,
+          "idle",
+        );
+      } else {
+        updateStatus(sourceStatus, "", "idle");
+      }
     } catch (error) {
       updateStatus(sourceStatus, error.message || "Quellen konnten nicht geladen werden", "error");
     }
@@ -500,28 +597,60 @@ export function initAdmin() {
     if (!sourcesList) {
       return;
     }
+    const meta = sourceMeta.meta || {};
     if (!cachedSources.length) {
-      sourcesList.innerHTML = '<p class="sources-empty">Noch keine Quellen hinterlegt.</p>';
+      const totalAll = meta.total_sources_all || 0;
+      const message = meta.filters_applied && totalAll > 0
+        ? "Keine Quellen passend zu den aktuellen Filtern."
+        : "Noch keine Quellen hinterlegt.";
+      sourcesList.innerHTML = `<p class="sources-empty">${message}</p>`;
       return;
     }
 
     const rows = cachedSources
       .map((source) => {
         const statusLabel = source.enabled ? "Aktiv" : "Deaktiviert";
+        const statusClass = source.enabled
+          ? "source-status source-status--active"
+          : "source-status source-status--inactive";
         const toggleLabel = source.enabled ? "Deaktivieren" : "Aktivieren";
         const interval = source.interval_minutes ?? 0;
-        const lastRun = source.last_run_at
-          ? new Date(source.last_run_at).toLocaleString()
-          : "–";
+        const intervalLabel = interval > 0 ? `${interval} min` : "Standard";
+        const stats = source.stats || {};
+        const totalItems = Number.isFinite(stats.total_items) ? stats.total_items : 0;
+        const latest = stats.latest_item || {};
+        const latestTitle = latest.title ? escapeHtml(latest.title) : "–";
+        const latestLink = latest.url
+          ? `<a href="${escapeHtml(latest.url)}" target="_blank" rel="noopener">${latestTitle}</a>`
+          : latestTitle;
+        const latestMetaParts = [];
+        if (latest.published_at) {
+          latestMetaParts.push(`Publiziert ${escapeHtml(formatDate(latest.published_at))}`);
+        } else if (latest.fetched_at) {
+          latestMetaParts.push(`Gefunden ${escapeHtml(formatDate(latest.fetched_at))}`);
+        }
+        const latestMeta = latestMetaParts.length
+          ? `<span class="source-latest__meta">${latestMetaParts.join(" • ")}</span>`
+          : "";
+        const lastRun = formatDate(source.last_run_at);
         return `
           <tr data-source-id="${source.id}">
-            <td>${escapeHtml(source.name)}</td>
-            <td>${escapeHtml(source.type.toUpperCase())}</td>
-            <td><a href="${escapeHtml(source.endpoint)}" target="_blank" rel="noopener">${escapeHtml(
+            <td>
+              <div class="source-name">${escapeHtml(source.name)}</div>
+              <div class="source-meta">
+                <span class="${statusClass}">${statusLabel}</span>
+                <span class="source-type">${escapeHtml(source.type.toUpperCase())}</span>
+              </div>
+            </td>
+            <td class="source-url"><a href="${escapeHtml(source.endpoint)}" target="_blank" rel="noopener">${escapeHtml(
               source.endpoint,
             )}</a></td>
-            <td>${interval} min</td>
-            <td>${statusLabel}</td>
+            <td>${intervalLabel}</td>
+            <td>${totalItems}</td>
+            <td class="source-latest">
+              <span class="source-latest__title">${latestLink}</span>
+              ${latestMeta}
+            </td>
             <td>${lastRun}</td>
             <td class="actions">
               <button type="button" class="button" data-action="toggle" data-id="${source.id}">${toggleLabel}</button>
@@ -537,18 +666,67 @@ export function initAdmin() {
         <table class="sources-table">
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Typ</th>
+              <th>Quelle</th>
               <th>Feed</th>
               <th>Intervall</th>
-              <th>Status</th>
-              <th>Letzter Lauf</th>
+              <th>Items</th>
+              <th>Letzter Artikel</th>
+              <th>Zuletzt ausgeführt</th>
               <th>Aktionen</th>
             </tr>
           </thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
+    `;
+  }
+
+  function renderSourceStats() {
+    if (!sourceStats) {
+      return;
+    }
+
+    const meta = sourceMeta.meta || {};
+    const total = Number.isFinite(meta.total_sources) ? meta.total_sources : cachedSources.length;
+    const active = Number.isFinite(meta.active_sources)
+      ? meta.active_sources
+      : cachedSources.filter((source) => source.enabled).length;
+    const inactive = Number.isFinite(meta.inactive_sources)
+      ? meta.inactive_sources
+      : total - active;
+    const totalAll = Number.isFinite(meta.total_sources_all) ? meta.total_sources_all : total;
+    const totalItems = Number.isFinite(meta.total_items)
+      ? meta.total_items
+      : cachedSources.reduce((sum, source) => sum + (source.stats?.total_items ?? 0), 0);
+    const typeBreakdown = meta.type_breakdown || {};
+    const lastRunAt = meta.last_run_at ? formatDate(meta.last_run_at) : "–";
+
+    const typesMarkup = Object.keys(typeBreakdown).length
+      ? `<ul class="source-type-list">${Object.entries(typeBreakdown)
+          .map(
+            ([type, count]) =>
+              `<li><span>${escapeHtml(String(type).toUpperCase())}</span><strong>${count}</strong></li>`,
+          )
+          .join("")}</ul>`
+      : '<p class="source-type-empty">Keine Typen gefunden.</p>';
+
+    const totalMeta = totalAll > total ? ` • Gesamt: ${totalAll}` : "";
+
+    sourceStats.innerHTML = `
+      <article class="stat-card">
+        <h3>Gesamtquellen</h3>
+        <p class="stat-card__value">${total}</p>
+        <p class="stat-card__meta">Aktiv: ${active} • Inaktiv: ${inactive}${totalMeta}</p>
+      </article>
+      <article class="stat-card">
+        <h3>Gesamt-Items</h3>
+        <p class="stat-card__value">${totalItems}</p>
+        <p class="stat-card__meta">Letzter Lauf: ${lastRunAt}</p>
+      </article>
+      <article class="stat-card stat-card--types">
+        <h3>Quellen-Typen</h3>
+        ${typesMarkup}
+      </article>
     `;
   }
 
@@ -678,8 +856,44 @@ export function initAdmin() {
     workerUpdated.textContent = formatTimestamp(workerMeta.updatedAt);
   }
 
+  if (sourceFilterForm) {
+    syncSourceFilterForm();
+    sourceFilterForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      sourceFilters = {
+        query: sourceFilterForm.elements.query
+          ? sourceFilterForm.elements.query.value.trim()
+          : "",
+        type: sourceFilterForm.elements.type
+          ? sourceFilterForm.elements.type.value || "all"
+          : "all",
+        status: sourceFilterForm.elements.status
+          ? sourceFilterForm.elements.status.value || "all"
+          : "all",
+      };
+      loadSources();
+    });
+  }
+
+  if (sourceFilterReset) {
+    sourceFilterReset.addEventListener("click", () => {
+      sourceFilters = { query: "", type: "all", status: "all" };
+      if (sourceFilterForm) {
+        sourceFilterForm.reset();
+        syncSourceFilterForm();
+      }
+      loadSources();
+    });
+  }
+
   if (sourceForm) {
     sourceForm.addEventListener("submit", createSource);
+  }
+
+  if (sourceRefresh) {
+    sourceRefresh.addEventListener("click", () => {
+      loadSources();
+    });
   }
 
   if (sourcesList) {

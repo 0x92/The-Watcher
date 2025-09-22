@@ -96,8 +96,63 @@
   </section>
 
   <section class="card admin-card" data-admin-sources>
-    <h2>Quellen &amp; RSS</h2>
+    <div class="admin-card__header">
+      <div>
+        <h2>Quellen &amp; RSS</h2>
+        <p class="lead">Verwalte Feeds, filtere nach Typen und behalte den Überblick über neue Artikel.</p>
+      </div>
+      <div class="admin-card__header-actions">
+        <button type="button" class="button" data-source-refresh>Aktualisieren</button>
+      </div>
+    </div>
     <p class="status-message" data-source-status hidden></p>
+
+    <div class="source-overview">
+      <form class="source-filters" data-source-filter-form>
+        <label class="form-control" for="source-query">
+          <span>Suche</span>
+          <input type="search" id="source-query" name="query" placeholder="Name oder URL" />
+        </label>
+        <label class="form-control" for="source-filter-type">
+          <span>Typ</span>
+          <select id="source-filter-type" name="type">
+            <option value="all">Alle Typen</option>
+            <option value="rss">RSS</option>
+            <option value="atom">Atom</option>
+          </select>
+        </label>
+        <label class="form-control" for="source-filter-status">
+          <span>Status</span>
+          <select id="source-filter-status" name="status">
+            <option value="all">Alle</option>
+            <option value="active">Aktiv</option>
+            <option value="inactive">Deaktiviert</option>
+          </select>
+        </label>
+        <div class="form-actions">
+          <button type="submit" class="button">Filter anwenden</button>
+          <button type="button" class="button" data-source-filter-reset>Zurücksetzen</button>
+        </div>
+      </form>
+
+      <div class="stat-grid" data-source-stats>
+        <article class="stat-card">
+          <h3>Gesamtquellen</h3>
+          <p class="stat-card__value">–</p>
+          <p class="stat-card__meta">Keine Daten</p>
+        </article>
+        <article class="stat-card">
+          <h3>Gesamt-Items</h3>
+          <p class="stat-card__value">–</p>
+          <p class="stat-card__meta">Keine Daten</p>
+        </article>
+        <article class="stat-card stat-card--types">
+          <h3>Quellen-Typen</h3>
+          <p class="stat-card__meta">Keine Daten</p>
+        </article>
+      </div>
+    </div>
+
     <form class="admin-form" data-source-form>
       <div class="form-row">
         <label class="form-control" for="source-name">

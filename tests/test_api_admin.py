@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import pytest
+from datetime import datetime, timedelta
 from pathlib import Path
 
-import pytest
-
 from app import create_app
+
 from app.db import get_engine, get_session
-from app.models import Base, Setting
+from app.models import Base, Item, Setting, Source
 from app.services.workers import WorkerCommandError, WorkerUnavailableError
 
 
@@ -108,7 +109,10 @@ def test_sources_crud(client_with_db):
 
     list_resp = client.get("/api/admin/sources")
     assert list_resp.status_code == 200
-    assert list_resp.get_json() == []
+    listing = list_resp.get_json()
+    assert listing["sources"] == []
+    assert listing["meta"]["total_sources"] == 0
+    assert listing["meta"]["total_sources_all"] == 0
 
     create_resp = client.post(
         "/api/admin/sources",
@@ -123,6 +127,7 @@ def test_sources_crud(client_with_db):
     created = create_resp.get_json()
     assert created["name"] == "Example Feed"
     assert created["interval_minutes"] == 25
+    assert created["stats"]["total_items"] == 0
     source_id = created["id"]
 
     update_resp = client.put(
@@ -133,6 +138,7 @@ def test_sources_crud(client_with_db):
     updated = update_resp.get_json()
     assert updated["enabled"] is False
     assert updated["interval_minutes"] == 5
+    assert updated["stats"]["total_items"] == 0
 
     delete_resp = client.delete(f"/api/admin/sources/{source_id}")
     assert delete_resp.status_code == 200
@@ -140,7 +146,101 @@ def test_sources_crud(client_with_db):
 
     final_resp = client.get("/api/admin/sources")
     assert final_resp.status_code == 200
-    assert final_resp.get_json() == []
+    final_listing = final_resp.get_json()
+    assert final_listing["sources"] == []
+    assert final_listing["meta"]["total_sources_all"] == 0
+
+
+def test_sources_overview_and_filters(client_with_db):
+    client, db_url = client_with_db
+    _login(client)
+
+    session = get_session(db_url)
+    try:
+        rss_source = Source(
+            name="Alpha Feed",
+            type="rss",
+            endpoint="http://alpha.test/feed",
+            enabled=True,
+            interval_sec=900,
+        )
+        atom_source = Source(
+            name="Beta Feed",
+            type="atom",
+            endpoint="http://beta.test/feed",
+            enabled=False,
+            interval_sec=1800,
+        )
+        session.add_all([rss_source, atom_source])
+        session.commit()
+
+        now = datetime.utcnow()
+        session.add_all(
+            [
+                Item(
+                    source_id=rss_source.id,
+                    url="http://alpha.test/item-1",
+                    title="Alpha One",
+                    fetched_at=now - timedelta(minutes=30),
+                    published_at=now - timedelta(minutes=40),
+                ),
+                Item(
+                    source_id=rss_source.id,
+                    url="http://alpha.test/item-2",
+                    title="Alpha Two",
+                    fetched_at=now - timedelta(minutes=10),
+                    published_at=now - timedelta(minutes=12),
+                ),
+                Item(
+                    source_id=atom_source.id,
+                    url="http://beta.test/item-1",
+                    title="Beta One",
+                    fetched_at=now - timedelta(minutes=20),
+                    published_at=now - timedelta(minutes=25),
+                ),
+            ]
+        )
+        session.commit()
+    finally:
+        session.close()
+
+    resp = client.get("/api/admin/sources")
+    assert resp.status_code == 200
+    payload = resp.get_json()
+    assert payload["meta"]["total_sources"] == 2
+    assert payload["meta"]["active_sources"] == 1
+    assert payload["meta"]["inactive_sources"] == 1
+    assert payload["meta"]["total_items"] == 3
+    assert payload["meta"]["type_breakdown"] == {"atom": 1, "rss": 1}
+    assert payload["filters"] == {"query": None, "types": [], "enabled": None}
+
+    alpha = next(entry for entry in payload["sources"] if entry["name"] == "Alpha Feed")
+    assert alpha["stats"]["total_items"] == 2
+    assert alpha["stats"]["latest_item"]["title"] == "Alpha Two"
+
+    beta = next(entry for entry in payload["sources"] if entry["name"] == "Beta Feed")
+    assert beta["enabled"] is False
+    assert beta["stats"]["total_items"] == 1
+
+    query_resp = client.get("/api/admin/sources?q=Beta")
+    assert query_resp.status_code == 200
+    query_payload = query_resp.get_json()
+    assert len(query_payload["sources"]) == 1
+    assert query_payload["sources"][0]["name"] == "Beta Feed"
+    assert query_payload["filters"]["query"] == "Beta"
+
+    disabled_resp = client.get("/api/admin/sources?enabled=false")
+    assert disabled_resp.status_code == 200
+    disabled_payload = disabled_resp.get_json()
+    assert len(disabled_payload["sources"]) == 1
+    assert disabled_payload["sources"][0]["enabled"] is False
+    assert disabled_payload["filters"]["enabled"] is False
+
+    rss_resp = client.get("/api/admin/sources?type=rss")
+    assert rss_resp.status_code == 200
+    rss_payload = rss_resp.get_json()
+    assert len(rss_payload["sources"]) == 1
+    assert rss_payload["sources"][0]["type"] == "rss"
 
 
 def test_worker_overview_endpoint(client_with_db, monkeypatch):
