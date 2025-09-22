@@ -50,11 +50,21 @@ def get_user_by_id(user_id: str) -> Optional[User]:
     return None
 
 
-def role_required(role: str):
+def role_required(*roles: str):
+    if len(roles) == 1 and isinstance(roles[0], (set, list, tuple, frozenset)):
+        allowed_roles = {str(role) for role in roles[0]}
+    else:
+        allowed_roles = {str(role) for role in roles if role}
+
+    if not allowed_roles:
+        raise ValueError("role_required requires at least one role")
+
     def decorator(fn):
         @wraps(fn)
         def wrapper(*args, **kwargs):
-            if not current_user.is_authenticated or current_user.role != role:
+            if not current_user.is_authenticated:
+                abort(401)
+            if current_user.role not in allowed_roles:
                 abort(403)
             return fn(*args, **kwargs)
 
