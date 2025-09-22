@@ -1,152 +1,245 @@
 # The Watcher
 
-The Watcher ist eine modulare Plattform fuer Echtzeit-Monitoring und Analyse von Nachrichten- und Social-Media-Feeds. Sie sammelt Quellen, berechnet Gematria-Metriken, wertet Regeln aus und stellt die Ergebnisse in einer Weboberflaeche sowie ueber APIs bereit.
+The Watcher is a modular news and social media observability platform built around a Flask web
+application and a Celery worker stack. It ingests RSS/Atom feeds (and other endpoints in the
+future), calculates gematria metrics, evaluates alert rules, and exposes dashboards, APIs, and
+Prometheus metrics for downstream automation.
 
-## Inhalt
-- Ueberblick
-- Systemarchitektur
-- Voraussetzungen
-- Konfiguration
-- Schnellstart mit Docker Compose
-- Lokale Entwicklung ohne Docker
-- Datenfluss & Funktionen
-- Benutzeroberflaeche & API
-- Observability & Monitoring
-- Tests & Qualitaetssicherung
-- Nuetzliche Kommandos
-- Standardkonten
-- Lizenz
+## Project overview
 
-## Ueberblick
-The Watcher kombiniert eine Flask-Webanwendung mit Hintergrundprozessen auf Basis von Celery. Quellen wie RSS-Feeds werden regelmaessig eingelesen, normalisiert und persistiert. Zu jedem Eintrag werden Gematria-Werte berechnet, Alerts ausgewertet und die Daten fuer Suche und Visualisierung aufbereitet.
+* **Web application** – Flask blueprints provide the UI, public APIs, authentication, and an admin
+  surface.
+* **Background processing** – Celery workers fetch sources, compute gematria values, evaluate alerts,
+  and periodically discover NLP-based patterns.
+* **Persistence** – PostgreSQL (or SQLite for local development) stores sources, items, alerts,
+  events, patterns, and worker settings. Optional OpenSearch integration is prepared for full-text
+  and aggregation use cases.
+* **Frontend assets** – A small Vite project in `frontend/` compiles JavaScript and CSS bundles that
+  are served from `app/static/dist`.
+* **Observability** – Structured JSON logging, Prometheus metrics, and health/readiness endpoints are
+  available for both web and worker processes.
 
-## Systemarchitektur
-- Flask-App (`wsgi.py`) mit Blueprints fuer UI, Authentifizierung und Admin-Endpunkte.
-- SQLAlchemy-Modelle mit Alembic-Migrationen fuer PostgreSQL (optional SQLite lokal).
-- Celery Worker und Beat fuer Ingestion, Gematria-Berechnung, Alert-Evaluierung und kuenftige Indexierungsjobs (`app/tasks`).
-- Redis als Message-Broker, PostgreSQL als Primaerdatenbank, OpenSearch fuer Volltextsuche.
-- Prometheus-Metriken unter `/metrics`, Health-/Readiness-Probes unter `/health` und `/ready`.
-- JSON-Logging (`app/logging.py`) und optionale Sentry-Integration (`SENTRY_DSN`).
-- Reverse-Proxy-Setup mit Nginx (`deploy/nginx.conf`).
-- Vite-basierter Theme- und Asset-Build (`frontend/`, `app/static/dist`).
+## Repository structure
 
-## Voraussetzungen
-- Docker und Docker Compose >= 2.5 fuer das Container-Setup.
-- Alternativ: Python >= 3.11, Pip und ein lokaler PostgreSQL- oder SQLite-Zugang.
-- Fuer Frontend-Assets: Node.js >= 20 und npm (Vite-Build).
-- Optional: Zugriff auf einen OpenSearch-Cluster (lokal via Compose enthalten).
+```
+app/                Flask application package
+  blueprints/       UI, API, auth, and admin blueprints
+  models/           SQLAlchemy models (Source, Item, Gematria, Tag, Alert, Event, Pattern, Setting, User)
+  services/         Business logic for ingestion, analytics, alerts, search, NLP, and worker control
+  tasks/            Celery task implementations
+  templates/        Jinja templates for the HTML dashboards
+  static/           Pre-built assets served by Flask
+celery_app.py       Celery application factory and beat schedule
+config.py           Base configuration resolved from environment variables
+scripts/            Utility scripts (seed sources, inspect patterns)
+frontend/           Vite project for JavaScript and CSS modules
+migrations/         Alembic database migrations
+Makefile            Common development and deployment helpers
+docker-compose.yml  Local container stack (web, worker, beat, nginx, postgres, redis, opensearch)
+```
 
-## Konfiguration
-1. Kopiere `.env.example` nach `.env` und passe die Werte an.
-2. Wichtige Variablen:
-   - `FLASK_ENV`: `development` oder `production`.
-   - `SECRET_KEY`: sichere Zeichenkette fuer Sessions.
-   - `DATABASE_URL`: z. B. `postgresql+psycopg2://gematria:gematria@postgres:5432/gematria` oder lokal `sqlite:///app.db`.
-   - `OPENSEARCH_HOST`: Standard `http://opensearch:9200`.
-   - `REDIS_URL`: Standard `redis://redis:6379/0`.
-   - `SENTRY_DSN`: optional fuer Fehlertracking.
+## Requirements
 
-Optional: Fuer KI-basierte Mustererkennung koennen lokal die Zusatzpakete mit `pip install -r requirements-ml.txt` installiert werden (Sentence-Transformers, scikit-learn). Das Docker-Image installiert diese Bibliotheken bereits automatisch.
+* Python 3.11+ (tested with the toolchain in `requirements.txt`).
+* Node.js 20+ and npm for building the Vite frontend bundles.
+* Redis, PostgreSQL, and (optionally) OpenSearch for a complete stack.
+* Docker Compose ≥ 2.5 is recommended for local orchestration.
+* Optional machine learning extras for pattern discovery:
+  ```bash
+  pip install -r requirements-ml.txt
+  ```
 
-## Schnellstart mit Docker Compose
-1. `.env` anlegen (siehe oben).
-2. Sicherstellen, dass eine passende `Dockerfile` im Projekt liegt (Compose baut `web`, `worker` und `beat` aus dem lokalen Kontext).
-3. Container starten:
+## Configuration
+
+1. Copy `.env.example` to `.env` and adjust the values.
+2. Important environment variables:
+   * `FLASK_ENV` – `development` or `production`.
+   * `SECRET_KEY` – secret used for session signing.
+   * `DATABASE_URL` – PostgreSQL DSN (e.g. `postgresql+psycopg2://...`) or `sqlite:///app.db`.
+   * `OPENSEARCH_HOST` – URL of the OpenSearch cluster (Compose exposes `http://opensearch:9200`).
+   * `REDIS_URL` – Celery broker URL (`redis://redis:6379/0` by default).
+   * `SENTRY_DSN` – optional error reporting for Flask and Celery processes.
+3. The Flask app auto-populates secure cookie defaults and provides a development secret if none is
+   configured.
+
+## Running with Docker Compose
+
+1. Ensure `.env` is present (see above).
+2. Build and start the stack:
    ```bash
    docker compose up --build
+   # or
+   make up
    ```
-   oder mit Makefile: `make up`.
-4. Datenbank migrieren:
+3. Apply migrations inside the web container:
    ```bash
    docker compose run --rm web alembic upgrade head
    ```
-5. Beispieldaten einspielen (Seed fuer Quellen und Alerts):
+4. Seed demo data (sample sources and an alert):
    ```bash
    docker compose run --rm web python scripts/seed_sources.py
    ```
-6. Optional: OpenSearch-Index initialisieren (z. B. via Python-Shell und `app.services.search.create_items_index`).
-7. Die Anwendung ist ueber `http://localhost` erreichbar. Der API-Backend-Service lauscht standardmaessig auf Port 5000, Nginx publiziert Port 80.
+5. The UI and API are served via Nginx on [http://localhost](http://localhost). The Flask service
+   itself listens on port 5000. Redis, PostgreSQL, and OpenSearch are exposed on their standard
+   ports for debugging.
+6. Optional: initialize the OpenSearch index from a Python shell using
+   `app.services.search.create_items_index`.
 
-## Lokale Entwicklung ohne Docker
-1. Virtuelle Umgebung erstellen und aktivieren:
+## Local development without Docker
+
+1. Create and activate a virtual environment:
    ```bash
    python -m venv .venv
-   .venv\Scripts\activate  # Windows
-   source .venv/bin/activate  # Linux/macOS
+   source .venv/bin/activate  # Windows: .venv\Scripts\activate
    ```
-2. Backend-Abhaengigkeiten installieren:
+2. Install backend dependencies:
    ```bash
    pip install -r requirements.txt
    ```
-3. Frontend-Assets bauen (nur nach Aenderungen in `frontend/` erforderlich):
+   Install optional ML helpers for pattern discovery as needed.
+3. Install frontend dependencies and build the asset bundle when templates change:
    ```bash
    npm install
    npm run build
+   # npm run dev can be used for a hot-reload Vite development server
    ```
-4. `.env` anlegen und `DATABASE_URL=sqlite:///app.db` setzen (oder eigenen Postgres verwenden).
-5. Datenbank vorbereiten: `alembic upgrade head`.
-6. Seed-Skript ausfuehren: `python scripts/seed_sources.py`.
-7. Entwicklungsserver starten: `flask --app wsgi run --debug` oder `python wsgi.py`.
-8. Celery-Worker starten: `celery -A celery_app.celery worker --loglevel=INFO`.
-9. Optional Celery-Beat fuer periodische Tasks: `celery -A celery_app.celery beat --loglevel=INFO`.
+4. Configure `.env` with `DATABASE_URL=sqlite:///app.db` (or point to PostgreSQL).
+5. Run database migrations and seed data:
+   ```bash
+   alembic upgrade head
+   python scripts/seed_sources.py
+   ```
+6. Start the Flask development server:
+   ```bash
+   flask --app wsgi run --debug
+   # or: python wsgi.py
+   ```
+7. Start Celery worker and beat processes in separate terminals:
+   ```bash
+   celery -A celery_app.celery worker --loglevel=INFO
+   celery -A celery_app.celery beat --loglevel=INFO
+   ```
 
-## Datenfluss & Funktionen
-- Quellen (`app.models.Source`) definieren Intervall, Endpunkt und Authentifizierung.
-- Der Task `run_source` zieht Feeds (via `app.services.ingest.fetch`), dedupliziert Eintraege und speichert `Item`-Datensaetze.
-- `compute_gematria_for_item` berechnet Gematria-Werte (`app.services.gematria`) und legt sie im Modell `Gematria` ab.
-- Alerts werden ueber YAML-Regeln in `Alert.rule_yaml` definiert. `evaluate_alerts` prueft Bedingungen (z. B. Werte, Quellen, Zeitfenster) und erstellt `Event`-Eintraege.
-- Indexierung in OpenSearch ist vorbereitet (`app/services/search`), ein konkreter Task kann ueber `index_item_to_opensearch` ergaenzt werden.
-- Die Pattern-Pipeline (`discover_patterns`) bettet neue Items, clustert sie via `app/services/nlp/patterns.py` und persistiert Ergebnisse in `patterns` (API `/api/patterns/latest`, UI `/patterns`).
+## Background jobs and data flow
 
-## Benutzeroberflaeche & API
-- UI-Blueprint (`app/blueprints/ui`) liefert HTML-Seiten fuer Ueberblick, Stream, Heatmap, Graph und Alerts.
-- Kopfbereich bietet Navigationsleiste, Breadcrumbs und Theme-Toggle (Light/Dark).
-- Heatmap Dashboard: `/heatmap` nutzt `/api/analytics/heatmap` und den SSE-Stream `/stream/analytics/heatmap` fuer kombinierte Heatmap & Timeline.
-- Authentifizierungsendpunkte (`/auth/login`, `/auth/logout`) erwarten JSON (`{"email", "password"}`).
-- Administrativer Check unter `/admin/panel` erfordert eingeloggten Nutzer mit Rolle `admin`.
-- Offentliche Health-Checks: `/health` und `/ready`.
-- Pattern-Explorer: /patterns nutzt den Endpoint /api/patterns/latest fuer KI-basierte Cluster.
+* **Sources** – Configured `Source` rows describe endpoints, polling intervals, and optional
+  authentication. RSS/Atom feeds are fetched via `app.services.ingest.fetch`, with fallbacks for
+  HTTP errors and bundled sample data.
+* **Ingestion tasks** – `run_source` and `run_due_sources` fetch feeds, deduplicate items, persist
+  `Item` records, and immediately compute gematria metrics.
+* **Gematria** – `compute_gematria_for_item` persists an `ordinal` scheme value for each item using
+  the pluggable mappings in `app/services/gematria`.
+* **Alerts** – `evaluate_alerts` reads YAML rules from the `Alert` table, counts matching items over
+  rolling windows, and stores triggered `Event` rows.
+* **Pattern discovery** – `discover_patterns` embeds recent items with SentenceTransformers (or a
+  deterministic hash fallback), clusters them, and stores representative `Pattern` rows for the UI.
+* **Celery beat schedule** – `celery_app.py` ships a default schedule that pings the worker, scrapes
+  due sources every minute, evaluates alerts, and refreshes patterns every 15 minutes.
+* **Worker settings** – Toggled through the admin API (`/api/admin/worker-settings`) and persisted in
+  the `Setting` table to allow pausing scraping or adjusting source limits.
+* **OpenSearch indexing** – A placeholder task (`index_item_to_opensearch`) and the helper module in
+  `app/services/search` provide the index mapping when full-text indexing is required.
 
-## Observability & Monitoring
-- Prometheus-kompatible Metriken unter `/metrics` (HTTP-Requests, Latenzen, Celery-Metriken).
-- Logging im JSON-Format (stdout). Geeignet fuer zentrale Log-Aggregation.
-- Optionaler Sentry-Hook via `SENTRY_DSN` fuer Web- und Worker-Prozesse.
+## User interface and APIs
 
-## Tests & Qualitaetssicherung
-- Tests ausfuehren: `pytest` oder `make test`.
-- Code-Qualitaet: `pre-commit run --all-files`, `ruff`, `black`, `mypy` (Konfiguration vorhanden).
-- Coverage-Bericht: `pytest --cov`.
+### UI routes
 
-## Nuetzliche Kommandos
-- `make install`: installiert Python-Abhaengigkeiten.
-- `make up` / `make down`: startet bzw. stoppt das Compose-Setup.
-- `make migrate`: fuehrt Alembic-Migrationen innerhalb des Web-Containers aus.
-- `make seed-rss`: fuehrt das Seed-Skript im Container aus.
-- `make logs service=worker`: folgt den Logs eines Dienstes.
-- `docker build -t the-watcher .`: baut das Produktionsimage mit Frontend-Assets.
-- `npm run build`: erzeugt das gebuendelte Design-System unter `app/static/dist`.
-- `npm run dev`: optionaler Vite-Dev-Server fuer schnelle UI-Iterationen.
-- `python scripts/eval_patterns.py --window 24h --limit 10`: zeigt erkannte Muster im Terminal.
+* `/` – high-level overview.
+* `/stream` – live stream dashboard fed by Server-Sent Events from `/stream/live`.
+* `/heatmap` – heatmap and timeline dashboard using the `/api/analytics/heatmap` endpoint and SSE
+  stream `/stream/analytics/heatmap`.
+* `/graph` – entity graph dashboard backed by `/api/graph`.
+* `/alerts` – alert list and status view.
+* `/patterns` – explorer for the latest discovered patterns.
+* `/admin` – entry point for administrative tooling (requires an admin session).
 
-## Standardkonten
-Die Demo verwendet In-Memory-Benutzer (siehe `app/security.py`):
-- Admin: `admin@example.com` / `adminpass`
-- Analyst: `analyst@example.com` / `analystpass`
-- Viewer: `viewer@example.com` / `viewerpass`
+### Public APIs
 
-## Lizenz
-Veroeffentlicht unter der MIT-Lizenz (siehe `LICENSE`).
+* `GET /api/health` – status probe used by readiness checks.
+* `GET /api/items` – paginated, filterable item listing (query, source, language, gematria filters,
+  time ranges, paging).
+* `GET /api/graph` – returns nodes/edges linking sources, tags, and alerts; supports window and role
+  filters.
+* `GET /api/patterns/latest` – latest pattern clusters.
+* `GET /api/analytics/heatmap` – aggregated ingestion counts and alert timeline metadata.
+* `GET /metrics` – Prometheus scrape target (HTTP counters/latency, Celery queue metrics).
+* `GET /health` and `GET /ready` – simple liveness/readiness checks for container orchestration.
 
+### Admin and authentication endpoints
 
+* `POST /auth/login`, `POST /auth/logout` – session management using the in-memory demo user store in
+  `app/security.py`.
+* `GET/PUT /api/admin/worker-settings` – inspect or update scraping configuration (admin role).
+* `GET /api/admin/workers` – Celery worker overview (online status, running tasks).
+* `POST /api/admin/workers/<worker>/control` – start/stop/restart worker pool processes.
+* `GET/POST/PUT/DELETE /api/admin/sources` – CRUD API for ingestion sources.
+* `GET /admin/panel` – authenticated admin probe.
 
+Rate limiting is enforced via Flask-Limiter (10 requests per minute for the API blueprints), CSRF
+protection is enabled for HTML forms and exempted where JSON APIs need programmatic access, and demo
+credentials are provided for quick evaluation.
 
+## Data storage and search
 
+* SQLAlchemy models define the relational schema and are managed via Alembic migrations in
+  `migrations/`.
+* Items capture source metadata, timestamps, language tags, and gematria values (stored in the
+  `Gematria` table).
+* Tags (`Tag`/`ItemTag`) and patterns (`Pattern`) support richer analytics and visualisations.
+* Alerts and events persist rule definitions and trigger history.
+* Worker settings (`Setting`) store scrape configuration that survives restarts.
+* `app/services/search/index.py` exposes an `items` index mapping tailored for OpenSearch (keyword
+  metadata, text fields, gematria objects) and a `create_items_index` helper to bootstrap the index.
 
+## Observability and monitoring
 
+* `/metrics` exposes Prometheus counters and histograms for HTTP traffic and Celery task durations.
+* Celery emits queue depth and task timing metrics via the Prometheus client in `celery_app.py`.
+* Structured logging is configured in `app/logging.py` for both web and worker processes; logs are
+  JSON-formatted for easy aggregation.
+* Sentry can be enabled for both Flask and Celery by setting `SENTRY_DSN`.
+* Health checks: `/health` (liveness) and `/ready` (readiness) return HTTP 200 when the service is
+  up.
 
+## Testing and quality
 
+* Run the full test suite:
+  ```bash
+  pytest
+  # or
+  make test
+  ```
+* Linting and formatting:
+  ```bash
+  pre-commit run --all-files
+  # or individually
+  ruff check .
+  black .
+  mypy
+  ```
+* The repository includes extensive unit tests for models, services, API endpoints, Celery tasks, and
+  seed scripts under `tests/`.
 
+## Helpful commands and scripts
 
+* `make install` – install Python dependencies.
+* `make up` / `make down` – start or stop the Docker Compose stack.
+* `make migrate` – run Alembic migrations inside the web container.
+* `make seed-rss` – execute the RSS seed script inside the container.
+* `make logs service=worker` – follow logs for a specific Compose service.
+* `scripts/seed_sources.py` – populate demo sources and a sample alert in any environment.
+* `scripts/eval_patterns.py` – inspect stored pattern clusters from the command line.
 
+## Demo accounts
 
+The bundled in-memory user store provides three roles for testing (`app/security.py`):
 
+| Role    | Email                 | Password    |
+| ------- | --------------------- | ----------- |
+| admin   | `admin@example.com`   | `adminpass` |
+| analyst | `analyst@example.com` | `analystpass` |
+| viewer  | `viewer@example.com`  | `viewerpass` |
+
+## License
+
+Released under the MIT License. See [`LICENSE`](LICENSE) for details.
