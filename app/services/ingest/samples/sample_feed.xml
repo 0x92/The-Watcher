@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>The Watcher Sample Feed</title>
+    <link>https://example.com/the-watcher</link>
+    <description>Fallback items used when live sources are unreachable.</description>
+    <item>
+      <title>Realtime Monitoring Platform Launched</title>
+      <link>https://example.com/news/watcher-launch</link>
+      <pubDate>Mon, 03 Mar 2025 08:00:00 GMT</pubDate>
+      <guid>https://example.com/news/watcher-launch</guid>
+    </item>
+    <item>
+      <title>Analysts Discover Coordinated Campaign</title>
+      <link>https://example.com/news/campaign</link>
+      <pubDate>Mon, 03 Mar 2025 09:30:00 GMT</pubDate>
+      <guid>https://example.com/news/campaign</guid>
+    </item>
+    <item>
+      <title>Alert Rules Improved For Streaming Data</title>
+      <link>https://example.com/news/alerts</link>
+      <pubDate>Mon, 03 Mar 2025 10:15:00 GMT</pubDate>
+      <guid>https://example.com/news/alerts</guid>
+    </item>
+    <item>
+      <title>Investigators Track Emerging Narratives</title>
+      <link>https://example.com/news/narratives</link>
+      <pubDate>Mon, 03 Mar 2025 11:45:00 GMT</pubDate>
+      <guid>https://example.com/news/narratives</guid>
+    </item>
+    <item>
+      <title>Gematria Engine Highlights Anomalies</title>
+      <link>https://example.com/news/gematria</link>
+      <pubDate>Mon, 03 Mar 2025 12:30:00 GMT</pubDate>
+      <guid>https://example.com/news/gematria</guid>
+    </item>
+  </channel>
+</rss>
