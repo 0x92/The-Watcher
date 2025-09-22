@@ -1,5 +1,62 @@
 {% extends 'base.html' %}
 {% block content %}
-<h1>Stream</h1>
-<p>Live feed placeholder.</p>
+<section id="stream-dashboard" class="page-shell">
+  <header>
+    <div>
+      <h1>Stream</h1>
+      <p class="status-message" data-state="loading" data-stream-status>Verbinde zum Live-Feed...</p>
+    </div>
+    <form id="stream-filters" class="filter-grid" aria-label="Stream Filter">
+      <div class="form-control">
+        <label for="stream-sources">Quellen</label>
+        <input id="stream-sources" name="sources" type="text" placeholder="z.B. Reuters,AP" autocomplete="off">
+      </div>
+      <div class="form-control">
+        <label for="stream-limit">Limit</label>
+        <select id="stream-limit" name="limit">
+          <option value="25">25</option>
+          <option value="50" selected>50</option>
+          <option value="100">100</option>
+        </select>
+      </div>
+      <div class="form-control">
+        <label for="stream-refresh">Auto-Refresh</label>
+        <select id="stream-refresh" name="refresh">
+          <option value="0">Aus</option>
+          <option value="5">Alle 5 Sekunden</option>
+          <option value="15" selected>Alle 15 Sekunden</option>
+          <option value="30">Alle 30 Sekunden</option>
+          <option value="60">Alle 60 Sekunden</option>
+        </select>
+      </div>
+      <div class="form-control">
+        <label for="stream-since">Seit</label>
+        <input id="stream-since" name="since" type="datetime-local" autocomplete="off">
+      </div>
+    </form>
+  </header>
+
+  <section class="stream-meta">
+    <div>
+      <h2>Aktivität</h2>
+      <dl class="stream-stats" data-stream-meta>
+        <dt>Items</dt>
+        <dd>-</dd>
+        <dt>Aktualisiert</dt>
+        <dd>-</dd>
+        <dt>Quellen</dt>
+        <dd>-</dd>
+      </dl>
+    </div>
+    <div class="stream-actions">
+      <button id="stream-reload" type="button" class="button-primary">Jetzt aktualisieren</button>
+    </div>
+  </section>
+
+  <section aria-live="polite" aria-busy="true" data-stream-region>
+    <ol class="feed-list" data-stream-list>
+      <li class="empty-state">Keine Items geladen.</li>
+    </ol>
+  </section>
+</section>
 {% endblock %}
