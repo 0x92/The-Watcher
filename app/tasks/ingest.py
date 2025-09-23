@@ -1,4 +1,4 @@
-"""Celery tasks for ingesting sources, deriving metrics and discovering patterns."""
+"""Scheduler-backed tasks for ingesting sources, deriving metrics and discovering patterns."""
 
 from __future__ import annotations
 
@@ -9,7 +9,6 @@ from typing import Dict
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from celery_app import celery
 from app.db import get_session
 from app.models import Gematria, Item, Pattern, Source
 from app.services.alerts import evaluate_alerts as evaluate_alerts_service
@@ -255,51 +254,6 @@ def discover_patterns(
     return inserted
 
 
-# --- Celery task wrappers --------------------------------------------------
-
-
-@celery.task(name="run_source")
-def run_source_task(source_id: int) -> int:
-    return run_source(source_id)
-
-
-@celery.task(name="run_due_sources")
-def run_due_sources_task() -> int:
-    return run_due_sources()
-
-
-@celery.task(name="compute_gematria_for_item")
-def compute_gematria_for_item_task(item_id: int) -> Dict[str, int]:
-    return compute_gematria_for_item(item_id)
-
-
-@celery.task(name="index_item_to_opensearch")
-def index_item_to_opensearch_task(item_id: int) -> int:
-    return index_item_to_opensearch(item_id)
-
-
-@celery.task(name="evaluate_alerts")
-def evaluate_alerts_task() -> int:
-    return evaluate_alerts()
-
-
-@celery.task(name="discover_patterns")
-def discover_patterns_task(
-    hours: int = 24,
-    max_items: int = 200,
-    min_cluster_size: int = 2,
-    max_clusters: int = 5,
-    max_patterns: int = 10,
-) -> int:
-    return discover_patterns(
-        hours=hours,
-        max_items=max_items,
-        min_cluster_size=min_cluster_size,
-        max_clusters=max_clusters,
-        max_patterns=max_patterns,
-    )
-
-
 __all__ = [
     "run_source",
     "run_due_sources",
@@ -307,10 +261,4 @@ __all__ = [
     "index_item_to_opensearch",
     "evaluate_alerts",
     "discover_patterns",
-    "run_source_task",
-    "run_due_sources_task",
-    "compute_gematria_for_item_task",
-    "index_item_to_opensearch_task",
-    "evaluate_alerts_task",
-    "discover_patterns_task",
 ]

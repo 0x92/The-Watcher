@@ -50,19 +50,22 @@ def _default_opensearch_host() -> str:
     return f"http://{host}:9200"
 
 
-def _default_redis_url() -> str:
-    configured = _get_env("REDIS_URL")
-    if configured:
-        return configured
-    host = _resolve_service_host("redis", "localhost")
-    return f"redis://{host}:6379/0"
+def _get_int_env(name: str, default: int) -> int:
+    value = _get_env(name)
+    if value is None:
+        return default
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return default
+    return parsed if parsed > 0 else default
 
 
 class Config:
     SECRET_KEY = _get_env("SECRET_KEY", "change-me")
     DATABASE_URL = _get_env("DATABASE_URL")
     OPENSEARCH_HOST = _default_opensearch_host()
-    REDIS_URL = _default_redis_url()
+    SCHEDULER_MAX_WORKERS = _get_int_env("SCHEDULER_MAX_WORKERS", 4)
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SECURE = _get_bool_env("SESSION_COOKIE_SECURE", False)
     SESSION_COOKIE_SAMESITE = _get_env("SESSION_COOKIE_SAMESITE", "Lax")

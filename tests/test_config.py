@@ -1,37 +1,37 @@
 from __future__ import annotations
 
 import importlib
+
 import config
 
 
-def test_default_redis_url_prefers_compose_host(monkeypatch):
-    monkeypatch.delenv("REDIS_URL", raising=False)
+def test_default_opensearch_host_prefers_compose(monkeypatch):
+    monkeypatch.delenv("OPENSEARCH_HOST", raising=False)
     monkeypatch.setattr(config.socket, "gethostbyname", lambda host: "127.0.0.1")
 
-    assert config._default_redis_url() == "redis://redis:6379/0"
+    assert config._default_opensearch_host() == "http://opensearch:9200"
 
 
-def test_default_redis_url_falls_back_to_local(monkeypatch):
-    monkeypatch.delenv("REDIS_URL", raising=False)
+def test_default_opensearch_host_falls_back(monkeypatch):
+    monkeypatch.delenv("OPENSEARCH_HOST", raising=False)
 
     def raise_oserror(_host: str) -> str:
         raise OSError("unresolvable")
 
     monkeypatch.setattr(config.socket, "gethostbyname", raise_oserror)
 
-    assert config._default_redis_url() == "redis://localhost:6379/0"
+    assert config._default_opensearch_host() == "http://localhost:9200"
 
 
-def test_default_redis_url_uses_environment(monkeypatch):
-    monkeypatch.setenv("REDIS_URL", "redis://custom:6379/1")
-
-    assert config._default_redis_url() == "redis://custom:6379/1"
-
-
-def test_config_class_reads_environment(monkeypatch):
-    monkeypatch.setenv("REDIS_URL", "redis://override:6379/5")
+def test_scheduler_max_workers_from_env(monkeypatch):
+    monkeypatch.setenv("SCHEDULER_MAX_WORKERS", "8")
     reloaded = importlib.reload(config)
-    assert reloaded.Config.REDIS_URL == "redis://override:6379/5"
+    assert reloaded.Config.SCHEDULER_MAX_WORKERS == 8
 
-    monkeypatch.delenv("REDIS_URL", raising=False)
-    importlib.reload(config)
+    monkeypatch.setenv("SCHEDULER_MAX_WORKERS", "-3")
+    reloaded = importlib.reload(config)
+    assert reloaded.Config.SCHEDULER_MAX_WORKERS == 4
+
+    monkeypatch.delenv("SCHEDULER_MAX_WORKERS", raising=False)
+    reloaded = importlib.reload(config)
+    assert reloaded.Config.SCHEDULER_MAX_WORKERS == 4

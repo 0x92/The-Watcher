@@ -7,8 +7,6 @@ Flask-Limiter
 SQLAlchemy
 alembic
 psycopg2-binary
-Celery
-redis
 requests
 feedparser
 python-dateutil

@@ -1,7 +1,7 @@
 # The Watcher
 
 The Watcher is a modular news and social media observability platform built around a Flask web
-application and a Celery worker stack. It ingests RSS/Atom feeds (and other endpoints in the
+application and a lightweight Python scheduler. It ingests RSS/Atom feeds (and other endpoints in the
 future), calculates gematria metrics, evaluates alert rules, and exposes dashboards, APIs, and
 Prometheus metrics for downstream automation.
 
@@ -9,8 +9,8 @@ Prometheus metrics for downstream automation.
 
 * **Web application** – Flask blueprints provide the UI, public APIs, authentication, and an admin
   surface.
-* **Background processing** – Celery workers fetch sources, compute gematria values, evaluate alerts,
-  and periodically discover NLP-based patterns.
+* **Background processing** – A threaded Python scheduler fetches sources, computes gematria values,
+  evaluates alerts, and periodically discovers NLP-based patterns.
 * **Persistence** – PostgreSQL (or SQLite for local development) stores sources, items, alerts,
   events, patterns, and worker settings. Optional OpenSearch integration is prepared for full-text
   and aggregation use cases.
@@ -26,23 +26,23 @@ app/                Flask application package
   blueprints/       UI, API, auth, and admin blueprints
   models/           SQLAlchemy models (Source, Item, Gematria, Tag, Alert, Event, Pattern, Setting, User)
   services/         Business logic for ingestion, analytics, alerts, search, NLP, and worker control
-  tasks/            Celery task implementations
+  tasks/            Background job implementations
   templates/        Jinja templates for the HTML dashboards
   static/           Pre-built assets served by Flask
-celery_app.py       Celery application factory and beat schedule
+scheduler_app.py    Threaded scheduler configuration and job registry
 config.py           Base configuration resolved from environment variables
 scripts/            Utility scripts (seed sources, inspect patterns)
 frontend/           Vite project for JavaScript and CSS modules
 migrations/         Alembic database migrations
 Makefile            Common development and deployment helpers
-docker-compose.yml  Local container stack (web, worker, beat, nginx, postgres, redis, opensearch)
+  docker-compose.yml  Local container stack (web, scheduler, nginx, postgres, opensearch)
 ```
 
 ## Requirements
 
 * Python 3.11+ (tested with the toolchain in `requirements.txt`).
 * Node.js 20+ and npm for building the Vite frontend bundles.
-* Redis, PostgreSQL, and (optionally) OpenSearch for a complete stack.
+* PostgreSQL and (optionally) OpenSearch for a complete stack.
 * Docker Compose ≥ 2.5 is recommended for local orchestration.
 * Optional machine learning extras for pattern discovery:
   ```bash
@@ -57,8 +57,8 @@ docker-compose.yml  Local container stack (web, worker, beat, nginx, postgres, r
    * `SECRET_KEY` – secret used for session signing.
    * `DATABASE_URL` – PostgreSQL DSN (e.g. `postgresql+psycopg2://...`) or `sqlite:///app.db`.
    * `OPENSEARCH_HOST` – URL of the OpenSearch cluster (Compose exposes `http://opensearch:9200`).
-   * `REDIS_URL` – Celery broker URL (`redis://redis:6379/0` by default).
-   * `SENTRY_DSN` – optional error reporting for Flask and Celery processes.
+   * `SCHEDULER_MAX_WORKERS` – number of concurrent background job threads (default: 4).
+   * `SENTRY_DSN` – optional error reporting for Flask and scheduler processes.
 3. The Flask app auto-populates secure cookie defaults and provides a development secret if none is
    configured.
 
@@ -80,8 +80,8 @@ docker-compose.yml  Local container stack (web, worker, beat, nginx, postgres, r
    docker compose run --rm web python scripts/seed_sources.py
    ```
 5. The UI and API are served via Nginx on [http://localhost](http://localhost). The Flask service
-   itself listens on port 5000. Redis, PostgreSQL, and OpenSearch are exposed on their standard
-   ports for debugging.
+   itself listens on port 5000. PostgreSQL and OpenSearch are exposed on their standard ports for
+   debugging.
 6. Optional: initialize the OpenSearch index from a Python shell using
    `app.services.search.create_items_index`.
 
@@ -114,10 +114,9 @@ docker-compose.yml  Local container stack (web, worker, beat, nginx, postgres, r
    flask --app wsgi run --debug
    # or: python wsgi.py
    ```
-7. Start Celery worker and beat processes in separate terminals:
+7. Start the background scheduler in a separate terminal:
    ```bash
-   celery -A celery_app.celery worker --loglevel=INFO
-   celery -A celery_app.celery beat --loglevel=INFO
+   python scheduler_app.py
    ```
 
 ## Background jobs and data flow
@@ -133,8 +132,8 @@ docker-compose.yml  Local container stack (web, worker, beat, nginx, postgres, r
   rolling windows, and stores triggered `Event` rows.
 * **Pattern discovery** – `discover_patterns` embeds recent items with SentenceTransformers (or a
   deterministic hash fallback), clusters them, and stores representative `Pattern` rows for the UI.
-* **Celery beat schedule** – `celery_app.py` ships a default schedule that pings the worker, scrapes
-  due sources every minute, evaluates alerts, and refreshes patterns every 15 minutes.
+* **Scheduler configuration** – `scheduler_app.py` registers recurring jobs that ping the worker,
+  scrape due sources every minute, evaluate alerts, and refresh patterns every 15 minutes.
 * **Worker settings** – Toggled through the admin API (`/api/admin/worker-settings`) and persisted in
   the `Setting` table to allow pausing scraping or adjusting source limits.
 * **OpenSearch indexing** – A placeholder task (`index_item_to_opensearch`) and the helper module in
@@ -162,7 +161,7 @@ docker-compose.yml  Local container stack (web, worker, beat, nginx, postgres, r
   filters.
 * `GET /api/patterns/latest` – latest pattern clusters.
 * `GET /api/analytics/heatmap` – aggregated ingestion counts and alert timeline metadata.
-* `GET /metrics` – Prometheus scrape target (HTTP counters/latency, Celery queue metrics).
+* `GET /metrics` – Prometheus scrape target (HTTP counters/latency, scheduler metrics).
 * `GET /health` and `GET /ready` – simple liveness/readiness checks for container orchestration.
 
 ### Admin and authentication endpoints
@@ -170,8 +169,8 @@ docker-compose.yml  Local container stack (web, worker, beat, nginx, postgres, r
 * `POST /auth/login`, `POST /auth/logout` – session management using the in-memory demo user store in
   `app/security.py`.
 * `GET/PUT /api/admin/worker-settings` – inspect or update scraping configuration (admin role).
-* `GET /api/admin/workers` – Celery worker overview (online status, running tasks).
-* `POST /api/admin/workers/<worker>/control` – start/stop/restart worker pool processes.
+* `GET /api/admin/workers` – Scheduler overview (online status, registered jobs).
+* `POST /api/admin/workers/<worker>/control` – start/stop/restart the scheduler or individual jobs.
 * `GET/POST/PUT/DELETE /api/admin/sources` – CRUD API for ingestion sources.
 * `GET /admin/panel` – authenticated admin probe.
 
@@ -193,11 +192,11 @@ credentials are provided for quick evaluation.
 
 ## Observability and monitoring
 
-* `/metrics` exposes Prometheus counters and histograms for HTTP traffic and Celery task durations.
-* Celery emits queue depth and task timing metrics via the Prometheus client in `celery_app.py`.
+* `/metrics` exposes Prometheus counters and histograms for HTTP traffic and scheduler job durations.
+* The scheduler emits queue depth and job timing metrics via the Prometheus client in `scheduler_app.py`.
 * Structured logging is configured in `app/logging.py` for both web and worker processes; logs are
   JSON-formatted for easy aggregation.
-* Sentry can be enabled for both Flask and Celery by setting `SENTRY_DSN`.
+* Sentry can be enabled for both Flask and the scheduler by setting `SENTRY_DSN`.
 * Health checks: `/health` (liveness) and `/ready` (readiness) return HTTP 200 when the service is
   up.
 
@@ -217,7 +216,7 @@ credentials are provided for quick evaluation.
   black .
   mypy
   ```
-* The repository includes extensive unit tests for models, services, API endpoints, Celery tasks, and
+* The repository includes extensive unit tests for models, services, API endpoints, scheduler jobs, and
   seed scripts under `tests/`.
 
 ## Helpful commands and scripts

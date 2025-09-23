@@ -2,302 +2,154 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Dict, Iterable, List
+from typing import Any, Dict
 
-# Lazy Celery import is required to avoid circular imports during app initialisation.
-celery = None
+scheduler = None
 
 
-def _get_celery():
-    global celery
-    if celery is not None:
-        return celery
-    try:  # pragma: no cover - import guarded for circular dependencies
-        from celery_app import celery as celery_instance
+def _get_scheduler():
+    global scheduler
+    if scheduler is not None:
+        return scheduler
+    try:  # pragma: no cover - optional dependency
+        from scheduler_app import scheduler as scheduler_instance
     except Exception:
         return None
-    celery = celery_instance
-    return celery
+    scheduler = scheduler_instance
+    return scheduler
 
 
 @dataclass
 class WorkerUnavailableError(RuntimeError):
-    """Raised when a worker cannot be reached."""
+    """Raised when a requested job or worker does not exist."""
 
     worker: str
 
     def __str__(self) -> str:  # pragma: no cover - trivial representation
-        return f"Worker '{self.worker}' ist nicht erreichbar"
+        return f"Worker '{self.worker}' ist nicht verfügbar"
 
 
 class WorkerCommandError(RuntimeError):
-    """Raised when a worker command could not be executed."""
+    """Raised when a scheduler command cannot be executed."""
 
 
-def _safe_int(value: Any, default: int = 0) -> int:
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return default
+def _normalize_action(action: str) -> str:
+    normalized = (action or "").strip().lower()
+    if normalized not in {"start", "stop", "restart"}:
+        raise ValueError(f"Unbekannte Aktion: {action}")
+    return normalized
 
 
-def _stringify(value: Any) -> str:
-    if value is None:
-        return ""
-    if isinstance(value, str):
-        return value
-    try:
-        return repr(value)
-    except Exception:  # pragma: no cover - defensive fallback
-        return str(value)
-
-
-def _serialize_task_entry(entry: Dict[str, Any]) -> Dict[str, Any]:
-    if not isinstance(entry, dict):
-        return {"name": "", "id": ""}
-
-    request = entry.get("request")
-    if isinstance(request, dict):
-        base = request
-    else:
-        base = entry
-
-    delivery_info = base.get("delivery_info")
-    queue = None
-    if isinstance(delivery_info, dict):
-        queue = delivery_info.get("routing_key") or delivery_info.get("queue")
+def _serialize_worker_snapshot(snapshot: Dict[str, Any], *, running: bool) -> Dict[str, Any]:
+    jobs = []
+    for job in snapshot.get("jobs", []):
+        jobs.append(
+            {
+                "name": job.get("name"),
+                "interval_seconds": job.get("interval_seconds"),
+                "next_run_at": job.get("next_run_at"),
+                "last_run_at": job.get("last_run_at"),
+                "last_duration_seconds": job.get("last_duration_seconds"),
+                "total_runs": job.get("total_runs", 0),
+                "running": job.get("running", False),
+                "enabled": job.get("enabled", True),
+                "error": job.get("error"),
+            }
+        )
 
     return {
-        "id": str(base.get("id") or ""),
-        "name": base.get("name") or base.get("task") or "",
-        "args": base.get("argsrepr") or _stringify(base.get("args")),
-        "kwargs": base.get("kwargsrepr") or _stringify(base.get("kwargs")),
-        "eta": entry.get("eta") or base.get("eta"),
-        "state": base.get("state") or entry.get("state"),
-        "runtime": base.get("runtime"),
-        "queue": queue,
-        "retries": base.get("retries"),
+        "id": snapshot.get("name", "scheduler"),
+        "name": snapshot.get("name", "scheduler"),
+        "status": "online" if running else "stopped",
+        "online": bool(running),
+        "active_jobs": snapshot.get("active_jobs", 0),
+        "queued_jobs": snapshot.get("queued_jobs", 0),
+        "max_workers": snapshot.get("max_workers", 1),
+        "jobs": jobs,
     }
 
 
-def _current_processes(info: Dict[str, Any]) -> int:
-    processes = info.get("processes")
-    if isinstance(processes, (list, tuple, set)):
-        return len(processes)
-    if isinstance(processes, dict):
-        return len(processes)
-    return _safe_int(info.get("writes"), 0)
-
-
-def _configured_processes(stats: Dict[str, Any]) -> int:
-    pool = stats.get("pool") or {}
-    for key in ("max-concurrency", "max_concurrency", "limit"):
-        if key in pool:
-            value = _safe_int(pool.get(key))
-            if value > 0:
-                return value
-    fallback = stats.get("concurrency")
-    if isinstance(fallback, (int, float)):
-        return max(1, int(fallback))
-    return max(_current_processes(pool), 1)
-
-
-def _collect_worker_names(mappings: Iterable[Dict[str, Any] | None]) -> List[str]:
-    names: set[str] = set()
-    for mapping in mappings:
-        if isinstance(mapping, dict):
-            names.update(mapping.keys())
-    return sorted(names)
-
-
 def get_worker_overview() -> Dict[str, Any]:
-    """Return an overview of all known Celery workers."""
+    """Return scheduler status information for the admin API."""
 
     timestamp = datetime.now(timezone.utc).isoformat()
-    celery_app = _get_celery()
-    control = getattr(celery_app, "control", None)
-    if control is None:
+    scheduler_app = _get_scheduler()
+    if scheduler_app is None:
         return {
             "workers": [],
             "status": "unavailable",
             "updated_at": timestamp,
-            "message": "Celery-Steuerung ist nicht verfügbar.",
+            "message": "Scheduler ist nicht verfügbar.",
         }
 
-    try:
-        inspector = control.inspect()
-    except Exception as exc:  # pragma: no cover - connectivity issues
-        return {
-            "workers": [],
-            "status": "error",
-            "updated_at": timestamp,
-            "message": f"Celery-Inspektion fehlgeschlagen: {exc}",
-        }
+    snapshot = scheduler_app.snapshot()
+    running = scheduler_app.is_running
+    worker_info = _serialize_worker_snapshot(snapshot, running=running)
+    status = "ok" if running else "stopped"
 
-    if inspector is None:
-        return {
-            "workers": [],
-            "status": "unavailable",
-            "updated_at": timestamp,
-            "message": "Keine Worker erreichbar.",
-        }
+    return {
+        "workers": [worker_info],
+        "status": status,
+        "updated_at": timestamp,
+    }
 
-    ping = inspector.ping() or {}
-    stats = inspector.stats() or {}
-    active = inspector.active() or {}
-    reserved = inspector.reserved() or {}
-    scheduled = inspector.scheduled() or {}
-    queues = inspector.active_queues() or {}
-    registered = inspector.registered() or {}
 
-    workers: List[Dict[str, Any]] = []
-    for name in _collect_worker_names(
-        [stats, active, reserved, scheduled, queues, registered, ping]
-    ):
-        info = stats.get(name, {})
-        pool = info.get("pool") or {}
-        current_processes = _current_processes(pool)
-        configured_processes = _configured_processes(info) if info else None
-
-        active_tasks = [
-            _serialize_task_entry(task)
-            for task in active.get(name, [])
-            if isinstance(task, dict)
-        ]
-        reserved_tasks = [
-            _serialize_task_entry(task)
-            for task in reserved.get(name, [])
-            if isinstance(task, dict)
-        ]
-        scheduled_tasks = [
-            _serialize_task_entry(task)
-            for task in scheduled.get(name, [])
-            if isinstance(task, dict)
-        ]
-
-        queue_names = []
-        for queue in queues.get(name, []) or []:
-            if isinstance(queue, dict):
-                label = queue.get("name") or queue.get("routing_key")
-                if label:
-                    queue_names.append(str(label))
-
-        total_tasks = 0
-        totals = info.get("total")
-        if isinstance(totals, dict):
-            total_tasks = sum(_safe_int(value) for value in totals.values())
-
-        workers.append(
-            {
-                "id": name,
-                "name": name,
-                "online": name in ping,
-                "status": "online" if name in ping else "offline",
-                "active_processes": current_processes,
-                "configured_processes": configured_processes,
-                "queues": queue_names,
-                "active_tasks": active_tasks,
-                "reserved_tasks": reserved_tasks,
-                "scheduled_tasks": scheduled_tasks,
-                "registered_tasks": registered.get(name, []),
-                "total_tasks": total_tasks,
-                "pid": info.get("pid"),
-                "uptime": info.get("uptime"),
-                "hostname": info.get("hostname"),
-                "sw_ver": info.get("sw_ver"),
-            }
-        )
-
-    return {"workers": workers, "status": "ok", "updated_at": timestamp}
+def _ensure_scheduler() -> Any:
+    scheduler_app = _get_scheduler()
+    if scheduler_app is None:
+        raise WorkerCommandError("Scheduler-Steuerung ist nicht verfügbar")
+    return scheduler_app
 
 
 def execute_worker_command(worker_name: str, action: str) -> Dict[str, Any]:
-    """Execute a control command on a Celery worker."""
+    """Execute a control command on the scheduler or an individual job."""
 
-    normalized = (action or "").strip().lower()
-    if not normalized:
-        raise ValueError("Aktion darf nicht leer sein")
-    if normalized not in {"start", "stop", "restart"}:
-        raise ValueError(f"Unbekannte Aktion: {action}")
-
-    celery_app = _get_celery()
-    control = getattr(celery_app, "control", None)
-    if control is None:
-        raise WorkerCommandError("Celery-Steuerung ist nicht verfügbar")
+    normalized = _normalize_action(action)
+    scheduler_app = _ensure_scheduler()
 
     try:
-        inspector = control.inspect([worker_name])
-    except Exception as exc:  # pragma: no cover - connectivity issues
-        raise WorkerCommandError(f"Celery-Inspektion fehlgeschlagen: {exc}") from exc
+        if worker_name == "scheduler":
+            if normalized == "start":
+                scheduler_app.start()
+                message = "Scheduler wurde gestartet."
+            elif normalized == "stop":
+                scheduler_app.stop()
+                message = "Scheduler wurde gestoppt."
+            else:
+                scheduler_app.restart()
+                message = "Scheduler wurde neu gestartet."
+            return {"status": "ok", "action": normalized, "worker": worker_name, "message": message}
 
-    if inspector is None:
-        raise WorkerUnavailableError(worker_name)
-
-    ping = inspector.ping() or {}
-    if worker_name not in ping:
-        raise WorkerUnavailableError(worker_name)
-
-    stats = inspector.stats() or {}
-    info = stats.get(worker_name, {})
-    pool = info.get("pool") or {}
-    current_processes = _current_processes(pool)
-    configured_processes = _configured_processes(info) if info else 1
-
-    try:
-        if normalized == "stop":
-            if current_processes <= 0:
-                return {
-                    "status": "ok",
-                    "action": normalized,
-                    "message": "Worker ist bereits gestoppt.",
-                }
-            reply = control.broadcast(
-                "pool_shrink",
-                destination=[worker_name],
-                reply=True,
-                arguments={"n": current_processes},
-            )
-            return {
-                "status": "ok",
-                "action": normalized,
-                "message": f"Worker {worker_name} wurde gestoppt.",
-                "details": reply,
-            }
+        job = scheduler_app.get_job(worker_name)
+        if job is None:
+            raise WorkerUnavailableError(worker_name)
 
         if normalized == "start":
-            grow_by = max(configured_processes - current_processes, 0)
-            if grow_by <= 0:
-                if current_processes <= 0:
-                    grow_by = max(configured_processes, 1)
-                else:
-                    return {
-                        "status": "ok",
-                        "action": normalized,
-                        "message": "Worker läuft bereits mit voller Kapazität.",
-                    }
-            reply = control.broadcast(
-                "pool_grow",
-                destination=[worker_name],
-                reply=True,
-                arguments={"n": grow_by},
-            )
-            return {
-                "status": "ok",
-                "action": normalized,
-                "message": f"Worker {worker_name} wurde gestartet.",
-                "details": reply,
-            }
+            scheduler_app.enable_job(worker_name, delay=0.0)
+            message = f"Job {worker_name} wurde aktiviert."
+        elif normalized == "stop":
+            scheduler_app.disable_job(worker_name)
+            message = f"Job {worker_name} wurde deaktiviert."
+        else:
+            triggered = scheduler_app.trigger_job(worker_name)
+            if not triggered:
+                message = f"Job {worker_name} läuft bereits."
+            else:
+                message = f"Job {worker_name} wurde ausgelöst."
 
-        reply = control.broadcast(
-            "pool_restart", destination=[worker_name], reply=True
-        )
         return {
             "status": "ok",
             "action": normalized,
-            "message": f"Worker {worker_name} wurde neu gestartet.",
-            "details": reply,
+            "worker": worker_name,
+            "message": message,
         }
-    except Exception as exc:  # pragma: no cover - connectivity issues
+    except WorkerUnavailableError:
+        raise
+    except KeyError as exc:
+        raise WorkerUnavailableError(str(exc)) from exc
+    except ValueError as exc:
+        raise WorkerCommandError(str(exc)) from exc
+    except Exception as exc:  # pragma: no cover - defensive fallback
         raise WorkerCommandError(str(exc)) from exc
 
 
