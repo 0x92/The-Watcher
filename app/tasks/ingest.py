@@ -48,6 +48,10 @@ def compute_gematria_for_item(
 
     gematria_settings = get_gematria_settings(session)
     enabled_schemes = gematria_settings.get("enabled_schemes", [])
+    if enabled_schemes:
+        # Preserve user-defined ordering but avoid duplicates that could trigger
+        # redundant INSERTs for the same (item_id, scheme) pair.
+        enabled_schemes = list(dict.fromkeys(enabled_schemes))
     ignore_pattern = gematria_settings.get("ignore_pattern", r"[^A-Z]")
     values = compute_all(item.title, enabled_schemes, ignore_pattern=ignore_pattern)
     normalized = normalize(item.title, ignore_pattern=ignore_pattern)
