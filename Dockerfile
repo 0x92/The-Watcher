@@ -6,20 +6,29 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends build-essential curl nodejs npm \
-    && rm -rf /var/lib/apt/lists/*
+# System-Dependencies (inkl. Node & Buildtools)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        curl \
+        nodejs \
+        npm && \
+    rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt requirements-ml.txt ./
-RUN pip install --upgrade pip \
-    && pip install -r requirements.txt \
-    && pip install -r requirements-ml.txt
+# Python-Dependencies
+COPY requirements.txt .
+RUN pip install --upgrade pip && \
+    pip install -r requirements.txt
 
+# JS-Dependencies
 COPY package.json package-lock.json ./
-RUN npm install
+RUN npm ci --no-audit --no-fund
 
+# App-Code
 COPY . .
+
+# Frontend bauen (falls vorhanden)
 RUN npm run build
 
-CMD ["gunicorn", "wsgi:app", "--bind", "0.0.0.0:5000"]
-
+EXPOSE 5000
+CMD ["gunicorn", "wsgi:app", "--bind", "0.0.0.0:5000", "--workers", "3", "--threads", "2", "--timeout", "60"]
