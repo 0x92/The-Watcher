@@ -28,12 +28,12 @@ def _seed_graph_fixture(session: Session) -> None:
     session.flush()
 
     session.add(ItemTag(item_id=item.id, tag_id=tag.id, weight=2.0))
-    session.add(Gematria(item_id=item.id, scheme="ordinal", value=93))
+    session.add(Gematria(item_id=item.id, scheme="simple", value=93))
 
     alert_rule = """
 when:
   all:
-    - scheme: ordinal
+    - scheme: simple
       value_in: [93]
     - source_in: ["Reuters"]
     - window: { period: "24h", min_count: 1 }

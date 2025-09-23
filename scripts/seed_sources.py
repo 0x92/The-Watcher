@@ -66,7 +66,7 @@ def seed_demo_data(session: Session) -> None:
     alert_rule = """
 when:
   all:
-    - scheme: ordinal
+    - scheme: simple
       value_in: [93]
     - source_in: ["Reuters"]
     - window: { period: "24h", min_count: 1 }

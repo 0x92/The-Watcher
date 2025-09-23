@@ -51,9 +51,9 @@ def _seed(db_url: str) -> datetime:
 
         session.add_all(
             [
-                Gematria(item_id=items[0].id, scheme="ordinal", value=74),
-                Gematria(item_id=items[1].id, scheme="ordinal", value=144),
-                Gematria(item_id=items[2].id, scheme="ordinal", value=88),
+                Gematria(item_id=items[0].id, scheme="simple", value=74),
+                Gematria(item_id=items[1].id, scheme="simple", value=144),
+                Gematria(item_id=items[2].id, scheme="simple", value=88),
             ]
         )
         session.commit()
@@ -76,7 +76,7 @@ def test_items_endpoint_returns_filtered_items(monkeypatch, tmp_path):
     assert data["meta"]["total"] == 2
     assert len(data["items"]) == 2
     assert data["items"][0]["source"] == "Reuters"
-    assert data["items"][0]["gematria"]["ordinal"] in {74, 144}
+    assert data["items"][0]["gematria"]["simple"] in {74, 144}
 
     search_response = client.get("/api/items?query=Breaking")
     assert search_response.status_code == 200
@@ -84,7 +84,7 @@ def test_items_endpoint_returns_filtered_items(monkeypatch, tmp_path):
     assert len(search_data["items"]) == 1
     assert search_data["items"][0]["title"] == "Breaking Story"
 
-    gematria_response = client.get("/api/items?scheme=ordinal&value=74")
+    gematria_response = client.get("/api/items?scheme=simple&value=74")
     assert gematria_response.status_code == 200
     gematria_data = gematria_response.get_json()
     assert len(gematria_data["items"]) == 1

@@ -20,7 +20,7 @@ def test_evaluate_alerts_triggers_event():
     alert_rule = """
     when:
       all:
-        - scheme: ordinal
+        - scheme: simple
           value_in: [93]
         - source_in: ["Reuters"]
         - window: { period: "24h", min_count: 1 }
@@ -32,7 +32,7 @@ def test_evaluate_alerts_triggers_event():
     item = Item(source_id=src.id, url="http://item")
     session.add(item)
     session.flush()
-    gem = Gematria(item_id=item.id, scheme="ordinal", value=93)
+    gem = Gematria(item_id=item.id, scheme="simple", value=93)
     session.add(gem)
     session.commit()
 
@@ -53,7 +53,7 @@ def test_evaluate_alerts_no_match():
     alert_rule = """
     when:
       all:
-        - scheme: ordinal
+        - scheme: simple
           value_in: [93]
         - source_in: ["Reuters"]
         - window: { period: "24h", min_count: 1 }

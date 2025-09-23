@@ -35,16 +35,16 @@ def _seed_graph(session: Session, now: datetime) -> None:
     session.add(ItemTag(item_id=recent_item.id, tag_id=tag.id, weight=1.5))
     session.add(ItemTag(item_id=old_item.id, tag_id=tag.id, weight=4.0))
 
-    session.add(Gematria(item_id=recent_item.id, scheme="ordinal", value=93))
+    session.add(Gematria(item_id=recent_item.id, scheme="simple", value=93))
 
     alert_rule = """
 when:
   all:
-    - scheme: ordinal
+    - scheme: simple
       value_in: [93]
     - source_in: ["Reuters"]
 """
-    alert = Alert(name="ordinal_93", rule_yaml=alert_rule, enabled=True)
+    alert = Alert(name="simple_93", rule_yaml=alert_rule, enabled=True)
     session.add(alert)
     session.flush()
 

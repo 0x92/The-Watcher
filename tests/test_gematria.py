@@ -1,4 +1,4 @@
-from app.services.gematria import (
+﻿from app.services.gematria import (
     DEFAULT_ENABLED_SCHEMES,
     compute_all,
     digital_root,
@@ -9,35 +9,37 @@ from app.services.gematria import (
 
 def test_compute_all_known_examples():
     text = "CAT"
-    result = compute_all(text, ["ordinal", "reduction", "reverse", "reverse_reduction"])
+    result = compute_all(text, ["simple", "english_sumerian", "reverse_satanic"])
     assert result == {
-        "ordinal": 24,
-        "reduction": 6,
-        "reverse": 57,
-        "reverse_reduction": 21,
+        "simple": 24,
+        "english_sumerian": 144,
+        "reverse_satanic": 162,
     }
 
 
 def test_compute_all_ignores_non_letters():
-    text = "C4T 🎉"
-    result = compute_all(text, ["ordinal", "reduction"])
-    assert result == {"ordinal": 23, "reduction": 5}
+    text = "C4T -YZ%"
+    result = compute_all(text, ["simple", "unknown"])
+    assert result == {
+        "simple": 74,
+        "unknown": 466,
+    }
 
 
 def test_compute_all_unicode_normalization():
-    text = "Café"
-    result = compute_all(text, ["ordinal"])
-    assert result == {"ordinal": 10}
+    text = "CafǸ"
+    result = compute_all(text, ["simple"])
+    assert result == {"simple": 10}
 
 
 def test_compute_all_empty_string():
-    assert compute_all("", ["ordinal"]) == {"ordinal": 0}
+    assert compute_all("", ["simple"]) == {"simple": 0}
 
 
 def test_compute_all_additional_schemes():
     text = "CAB"
-    result = compute_all(text, ["prime", "sumerian"])
-    assert result == {"prime": 10, "sumerian": 36}
+    result = compute_all(text, ["prime", "clock"])
+    assert result == {"prime": 10, "clock": 6}
 
 
 def test_digital_root():
@@ -53,11 +55,10 @@ def test_factor_signature():
 
 def test_list_available_schemes_contains_metadata():
     schemes = list_available_schemes()
-    assert any(entry["key"] == "ordinal" for entry in schemes)
+    assert any(entry["key"] == "simple" for entry in schemes)
     assert all("label" in entry and "description" in entry for entry in schemes)
 
 
 def test_default_enabled_schemes_are_known():
     available = {entry["key"] for entry in list_available_schemes()}
-    for scheme in DEFAULT_ENABLED_SCHEMES:
-        assert scheme in available
+    assert set(DEFAULT_ENABLED_SCHEMES).issubset(available)

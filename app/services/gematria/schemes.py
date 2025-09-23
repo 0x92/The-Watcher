@@ -1,4 +1,4 @@
-"""Gematria letter mappings for various schemes."""
+﻿"""Gematria letter mappings for various schemes."""
 
 from __future__ import annotations
 
@@ -16,111 +16,78 @@ class SchemeDefinition:
     mapping: Dict[str, int]
 
 
-def _build_ordinal() -> Dict[str, int]:
-    return {chr(ord("A") + i): i + 1 for i in range(26)}
-
-
-def _build_reduction() -> Dict[str, int]:
-    ordinal = _build_ordinal()
-    return {ch: (val - 1) % 9 + 1 for ch, val in ordinal.items()}
-
-
-def _build_reverse() -> Dict[str, int]:
-    return {chr(ord("Z") - i): i + 1 for i in range(26)}
-
-
-def _build_reverse_reduction() -> Dict[str, int]:
-    reverse = _build_reverse()
-    return {ch: (val - 1) % 9 + 1 for ch, val in reverse.items()}
-
-
-def _build_prime() -> Dict[str, int]:
-    primes = [
-        2,
-        3,
-        5,
-        7,
-        11,
-        13,
-        17,
-        19,
-        23,
-        29,
-        31,
-        37,
-        41,
-        43,
-        47,
-        53,
-        59,
-        61,
-        67,
-        71,
-        73,
-        79,
-        83,
-        89,
-        97,
-        101,
-    ]
-    return {chr(ord("A") + i): primes[i] for i in range(26)}
-
-
-def _build_sumerian() -> Dict[str, int]:
-    ordinal = _build_ordinal()
-    return {ch: val * 6 for ch, val in ordinal.items()}
+def _alphabet_mapping(values: Iterable[int]) -> Dict[str, int]:
+    return {chr(ord("A") + index): int(value) for index, value in enumerate(values)}
 
 
 SCHEME_DEFINITIONS: Dict[str, SchemeDefinition] = {
-    "ordinal": SchemeDefinition(
-        key="ordinal",
-        label="Ordinal",
-        description="Klassische Zuordnung A=1 … Z=26.",
-        mapping=_build_ordinal(),
+    "english_sumerian": SchemeDefinition(
+        key="english_sumerian",
+        label="English (6er-Schritte)",
+        description="Multiplikation der Ordinalwerte mit 6 (A=6, Z=156).",
+        mapping=_alphabet_mapping([6 * (i + 1) for i in range(26)]),
     ),
-    "reduction": SchemeDefinition(
-        key="reduction",
-        label="Pythagoräisch",
-        description="Reduktion der Ordinalwerte auf einstellige Zahlen (1–9).",
-        mapping=_build_reduction(),
+    "simple": SchemeDefinition(
+        key="simple",
+        label="Simple",
+        description="Einfache Ordinalwerte A=1 bis Z=26.",
+        mapping=_alphabet_mapping(range(1, 27)),
     ),
-    "reverse": SchemeDefinition(
-        key="reverse",
-        label="Reverse Ordinal",
-        description="Spiegelung: Z=1 … A=26.",
-        mapping=_build_reverse(),
+    "unknown": SchemeDefinition(
+        key="unknown",
+        label="Unknown",
+        description="Konstante Offsets beginnend bei 99.",
+        mapping=_alphabet_mapping([99 + i for i in range(26)]),
     ),
-    "reverse_reduction": SchemeDefinition(
-        key="reverse_reduction",
-        label="Reverse Pythagoräisch",
-        description="Reduktion der gespiegelten Ordinalwerte auf 1–9.",
-        mapping=_build_reverse_reduction(),
+    "pythagoras": SchemeDefinition(
+        key="pythagoras",
+        label="Pythagoras",
+        description="Benutzerdefinierte pythagoräische Zuordnung.",
+        mapping=_alphabet_mapping([1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 11, 3, 4, 5, 6, 7, 8, 9, 10, 2, 3, 22, 5, 6, 7, 8]),
+    ),
+    "jewish": SchemeDefinition(
+        key="jewish",
+        label="Jewish",
+        description="Traditionelle jüdische Gematria-Werte.",
+        mapping=_alphabet_mapping([1, 2, 3, 4, 5, 6, 7, 8, 9, 600, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 200, 700, 900, 300, 400, 500]),
     ),
     "prime": SchemeDefinition(
         key="prime",
-        label="Primzahlen",
-        description="Zuweisung der ersten 26 Primzahlen (A=2 … Z=101).",
-        mapping=_build_prime(),
+        label="Prime",
+        description="Zuordnung der ersten 26 Primzahlen.",
+        mapping=_alphabet_mapping([2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 101]),
     ),
-    "sumerian": SchemeDefinition(
-        key="sumerian",
-        label="Sumerisch",
-        description="Ordinalwerte multipliziert mit 6 (A=6 … Z=156).",
-        mapping=_build_sumerian(),
+    "reverse_satanic": SchemeDefinition(
+        key="reverse_satanic",
+        label="Reverse Satanic",
+        description="Absteigende Werte von 61 bis 36.",
+        mapping=_alphabet_mapping(range(61, 35, -1)),
+    ),
+    "clock": SchemeDefinition(
+        key="clock",
+        label="Clock",
+        description="Uhrwerte 1–12 wiederholend.",
+        mapping=_alphabet_mapping([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2]),
+    ),
+    "reverse_clock": SchemeDefinition(
+        key="reverse_clock",
+        label="Reverse Clock",
+        description="Uhrwerte rückwärts von 12 nach 1.",
+        mapping=_alphabet_mapping([2, 1, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]),
+    ),
+    "system9": SchemeDefinition(
+        key="system9",
+        label="System 9",
+        description="Neuner-System mit 9er-Schritten (A=9).",
+        mapping=_alphabet_mapping([9 * (i + 1) for i in range(26)]),
     ),
 }
 
 
-SCHEMES: Dict[str, Dict[str, int]] = {
-    key: definition.mapping for key, definition in SCHEME_DEFINITIONS.items()
-}
+SCHEMES: Dict[str, Dict[str, int]] = {key: definition.mapping for key, definition in SCHEME_DEFINITIONS.items()}
 
 
-DEFAULT_ENABLED_SCHEMES: Tuple[str, ...] = (
-    "ordinal",
-    "reduction",
-    "reverse",
-)
+DEFAULT_ENABLED_SCHEMES: Tuple[str, ...] = tuple(SCHEME_DEFINITIONS.keys())
 
 
 def available_scheme_metadata() -> Iterable[SchemeDefinition]:

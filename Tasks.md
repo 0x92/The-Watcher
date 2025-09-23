@@ -133,7 +133,7 @@ DoD: make seed-os erzeugt Index, GET /api/search liefert Aggregationen.
 
 [x] Schemes definieren (app/services/gematria/schemes.py)
 
-ordinal, reduction (Pythagorean), reverse, reverse_reduction
+simple, english_sumerian, unknown, reverse_satanic
 
 optional: ALW/ALB/KFW als JSON-Mapping
 
@@ -262,7 +262,7 @@ name: Reuters_93_spike
 enabled: true
 when:
   all:
-    - scheme: ordinal
+    - scheme: simple
       value_in: [93]
     - source_in: ["Reuters"]
     - window: { period: "24h", min_count: 3 }
@@ -423,7 +423,7 @@ fmt: black .
     "url": "https://…",
     "source": "Reuters",
     "published_at": "2025-09-12T14:05:00Z",
-    "gematria": {"ordinal":93,"reduction":39},
+    "gematria": {"simple":93,"pythagoras":39},
     "tags": ["markets","fed"]
   }],
   "buckets": {"by_source":{"Reuters":44}}

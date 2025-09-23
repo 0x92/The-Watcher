@@ -52,15 +52,15 @@ def test_gematria_relationship(session: Session):
     session.add(item)
     session.flush()
 
-    gem = Gematria(item_id=item.id, scheme="ordinal", value=42)
+    gem = Gematria(item_id=item.id, scheme="simple", value=42)
     session.add(gem)
     session.commit()
 
     session.refresh(item)
-    fetched = session.get(Gematria, (item.id, "ordinal"))
+    fetched = session.get(Gematria, (item.id, "simple"))
     assert fetched is not None
     assert fetched.item.id == item.id
-    assert fetched.scheme == "ordinal"
+    assert fetched.scheme == "simple"
     assert fetched.value == 42
     assert len(item.gematria) == 1
 

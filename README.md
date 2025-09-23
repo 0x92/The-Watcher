@@ -128,7 +128,7 @@ Makefile            Common development and deployment helpers
   HTTP errors and bundled sample data.
 * **Ingestion tasks** – `run_source` and `run_due_sources` fetch feeds, deduplicate items, persist
   `Item` records, and immediately compute gematria metrics.
-* **Gematria** – `compute_gematria_for_item` persists an `ordinal` scheme value for each item using
+* **Gematria** – `compute_gematria_for_item` persists an `simple` scheme value for each item using
   the pluggable mappings in `app/services/gematria`.
 * **Alerts** – `evaluate_alerts` reads YAML rules from the `Alert` table, counts matching items over
   rolling windows, and stores triggered `Event` rows.

@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Iterable, List, Optional
 
+import os
 from flask import current_app, request
 
 from app.db import get_session
@@ -35,7 +36,7 @@ def graph() -> tuple[dict, int]:
 
     roles = _extract_roles()
 
-    db_url = current_app.config.get("DATABASE_URL") or current_app.config.get("SQLALCHEMY_DATABASE_URI")
+    db_url = os.getenv("DATABASE_URL") or current_app.config.get("DATABASE_URL") or current_app.config.get("SQLALCHEMY_DATABASE_URI")
 
     session = get_session(db_url)
     try:
