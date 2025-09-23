@@ -300,7 +300,7 @@ def test_worker_overview_endpoint(client_with_db, monkeypatch):
     payload = {
         "status": "ok",
         "updated_at": "2024-01-01T00:00:00Z",
-        "workers": [{"id": "celery@host", "status": "online"}],
+        "workers": [{"id": "scheduler", "status": "online"}],
     }
     monkeypatch.setattr("app.blueprints.api.admin.get_worker_overview", lambda: payload)
 
@@ -323,16 +323,16 @@ def test_worker_command_endpoint(client_with_db, monkeypatch):
     monkeypatch.setattr("app.blueprints.api.admin.execute_worker_command", fake_execute)
 
     resp = client.post(
-        "/api/admin/workers/celery@host/control",
+        "/api/admin/workers/scheduler/control",
         json={"action": "restart"},
     )
     assert resp.status_code == 200
     body = resp.get_json()
     assert body["action"] == "restart"
-    assert called == {"worker": "celery@host", "action": "restart"}
+    assert called == {"worker": "scheduler", "action": "restart"}
 
     invalid_resp = client.post(
-        "/api/admin/workers/celery@host/control",
+        "/api/admin/workers/scheduler/control",
         json={"action": ""},
     )
     assert invalid_resp.status_code == 400
@@ -343,7 +343,7 @@ def test_worker_command_endpoint_handles_errors(client_with_db, monkeypatch):
     _login(client)
 
     def raise_unavailable(*_args, **_kwargs):
-        raise WorkerUnavailableError("celery@host")
+        raise WorkerUnavailableError("scheduler")
 
     monkeypatch.setattr(
         "app.blueprints.api.admin.execute_worker_command",
@@ -351,7 +351,7 @@ def test_worker_command_endpoint_handles_errors(client_with_db, monkeypatch):
     )
 
     unavailable = client.post(
-        "/api/admin/workers/celery@host/control",
+        "/api/admin/workers/scheduler/control",
         json={"action": "start"},
     )
     assert unavailable.status_code == 404
@@ -365,7 +365,7 @@ def test_worker_command_endpoint_handles_errors(client_with_db, monkeypatch):
     )
 
     failed = client.post(
-        "/api/admin/workers/celery@host/control",
+        "/api/admin/workers/scheduler/control",
         json={"action": "restart"},
     )
     assert failed.status_code == 503

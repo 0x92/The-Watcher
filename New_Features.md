@@ -18,7 +18,7 @@
 - Tasks fuer Codex:
   - [x] Dependencies: Optionales Extra-Requirements-File `requirements-ml.txt` (sentence-transformers, scikit-learn) + Lazy-Import in `app/services/nlp`.
   - [x] Service: Modul `app/services/nlp/patterns.py` mit Funktionen `embed_items(items)` und `cluster_embeddings(...)`.
-  - [x] Task: Celery-Job `discover_patterns` in `app/tasks/ingest.py` oder eigenem Modul, der neue Items batchweise analysiert und Ergebnisse in Tabelle `patterns` (neue Migration) speichert.
+  - [x] Task: Scheduler-Job `discover_patterns` in `app/tasks/ingest.py` oder eigenem Modul, der neue Items batchweise analysiert und Ergebnisse in Tabelle `patterns` (neue Migration) speichert.
   - [x] API/UI: Endpoint `/api/patterns/latest` + neue Seite `app/templates/ui/patterns.html` mit Topics-Liste, Keyphrases, Anomaly-Scores.
   - [x] Eval: CLI-Skript `scripts/eval_patterns.py` zum manuellen Review + pytest mit Fake-Embeddings.
 

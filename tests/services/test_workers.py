@@ -1,177 +1,150 @@
 from __future__ import annotations
 
-import types
-
 import pytest
 
 from app.services import workers
 
 
-class DummyInspect:
-    def __init__(self, data: dict):
-        self._data = data
-
-    def ping(self):
-        return self._data.get("ping")
-
-    def stats(self):
-        return self._data.get("stats")
-
-    def active(self):
-        return self._data.get("active")
-
-    def reserved(self):
-        return self._data.get("reserved")
-
-    def scheduled(self):
-        return self._data.get("scheduled")
-
-    def active_queues(self):
-        return self._data.get("queues")
-
-    def registered(self):
-        return self._data.get("registered")
-
-
-class DummyControl:
-    def __init__(self, data: dict):
-        self._data = data
-        self.broadcast_calls: list[tuple[str, list[str] | None, dict | None]] = []
-
-    def inspect(self, *_args, **_kwargs):
-        return DummyInspect(self._data)
-
-    def broadcast(self, command: str, destination=None, reply=True, arguments=None):
-        self.broadcast_calls.append((command, destination, arguments))
-        return [{"ok": True}]
-
-
-def make_celery(control) -> types.SimpleNamespace:
-    return types.SimpleNamespace(control=control)
-
-
-def test_get_worker_overview_serializes_data(monkeypatch):
-    inspect_data = {
-        "ping": {"celery@host": {"ok": "pong"}},
-        "stats": {
-            "celery@host": {
-                "hostname": "celery@host",
-                "pid": 123,
-                "pool": {
-                    "max-concurrency": 4,
-                    "processes": [111, 222],
-                },
-                "total": {"run_due_sources": 5},
-            }
-        },
-        "active": {
-            "celery@host": [
+class DummyScheduler:
+    def __init__(self) -> None:
+        self.is_running = True
+        self.snapshot_data = {
+            "name": "scheduler",
+            "max_workers": 2,
+            "active_jobs": 1,
+            "queued_jobs": 3,
+            "jobs": [
                 {
-                    "id": "task-1",
                     "name": "run_due_sources",
-                    "args": [1, 2],
-                    "kwargs": {"limit": 5},
+                    "interval_seconds": 60.0,
+                    "next_run_at": "2024-01-01T00:00:00Z",
+                    "last_run_at": None,
+                    "last_duration_seconds": 1.2,
+                    "total_runs": 5,
+                    "running": False,
+                    "enabled": True,
+                    "error": None,
                 }
-            ]
-        },
-        "reserved": {"celery@host": []},
-        "scheduled": {
-            "celery@host": [
-                {
-                    "eta": "2024-01-01T00:00:00",
-                    "request": {
-                        "id": "task-2",
-                        "name": "run_due_sources",
-                        "argsrepr": "(3,)",
-                        "kwargsrepr": "{}",
-                    },
-                }
-            ]
-        },
-        "queues": {"celery@host": [{"name": "celery"}]},
-        "registered": {"celery@host": ["run_due_sources"]},
-    }
-    control = DummyControl(inspect_data)
-    monkeypatch.setattr(workers, "celery", make_celery(control))
+            ],
+        }
+        self.commands: list[tuple[str, str | None]] = []
+        self.jobs = {"run_due_sources": object()}
+
+    def snapshot(self):
+        return self.snapshot_data
+
+    def start(self):
+        self.commands.append(("start", None))
+        self.is_running = True
+
+    def stop(self):
+        self.commands.append(("stop", None))
+        self.is_running = False
+
+    def restart(self):
+        self.commands.append(("restart", None))
+        self.is_running = True
+
+    def get_job(self, name: str):
+        return self.jobs.get(name)
+
+    def enable_job(self, name: str, delay: float = 0.0):
+        self.commands.append(("enable", name))
+
+    def disable_job(self, name: str):
+        self.commands.append(("disable", name))
+
+    def trigger_job(self, name: str):
+        self.commands.append(("trigger", name))
+        return True
+
+
+@pytest.fixture(autouse=True)
+def _reset_scheduler(monkeypatch):
+    monkeypatch.setattr(workers, "scheduler", None)
+    yield
+    monkeypatch.setattr(workers, "scheduler", None)
+
+
+def test_get_worker_overview_serializes_scheduler(monkeypatch):
+    dummy = DummyScheduler()
+    monkeypatch.setattr(workers, "scheduler", dummy)
+    monkeypatch.setattr(workers, "_get_scheduler", lambda: dummy)
 
     overview = workers.get_worker_overview()
 
     assert overview["status"] == "ok"
     assert overview["workers"]
     worker = overview["workers"][0]
-    assert worker["name"] == "celery@host"
+    assert worker["id"] == "scheduler"
     assert worker["online"] is True
-    assert worker["queues"] == ["celery"]
-    assert worker["active_processes"] == 2
-    assert worker["configured_processes"] == 4
-    assert worker["total_tasks"] == 5
-    assert worker["active_tasks"][0]["args"].startswith("[1")
-    assert worker["scheduled_tasks"][0]["args"] == "(3,)"
+    assert worker["active_jobs"] == 1
+    assert worker["queued_jobs"] == 3
+    assert worker["jobs"][0]["name"] == "run_due_sources"
 
 
-def test_execute_worker_command_start_stop_restart(monkeypatch):
-    inspect_data = {
-        "ping": {"celery@host": {"ok": "pong"}},
-        "stats": {
-            "celery@host": {
-                "pool": {"max-concurrency": 3, "processes": [11, 12, 13]},
-                "total": {},
-            }
-        },
-    }
-    control = DummyControl(inspect_data)
-    monkeypatch.setattr(workers, "celery", make_celery(control))
-
-    stop_result = workers.execute_worker_command("celery@host", "stop")
-    assert stop_result["status"] == "ok"
-    assert control.broadcast_calls[0][0] == "pool_shrink"
-    assert control.broadcast_calls[0][2] == {"n": 3}
-
-    control.broadcast_calls.clear()
-    inspect_data["stats"]["celery@host"]["pool"]["processes"] = []
-    start_result = workers.execute_worker_command("celery@host", "start")
-    assert start_result["status"] == "ok"
-    assert control.broadcast_calls[0][0] == "pool_grow"
-    assert control.broadcast_calls[0][2] == {"n": 3}
-
-    control.broadcast_calls.clear()
-    restart_result = workers.execute_worker_command("celery@host", "restart")
-    assert restart_result["status"] == "ok"
-    assert control.broadcast_calls[0][0] == "pool_restart"
-
-
-def test_execute_worker_command_validates(monkeypatch):
-    inspect_data = {"ping": {}, "stats": {}}
-    control = DummyControl(inspect_data)
-    monkeypatch.setattr(workers, "celery", make_celery(control))
-
-    with pytest.raises(ValueError):
-        workers.execute_worker_command("celery@host", "invalid")
-
-    with pytest.raises(workers.WorkerUnavailableError):
-        workers.execute_worker_command("celery@host", "restart")
-
-
-def test_execute_worker_command_wraps_errors(monkeypatch):
-    class FailingControl(DummyControl):
-        def broadcast(self, *args, **kwargs):  # pragma: no cover - explicit failure path
-            raise RuntimeError("boom")
-
-    inspect_data = {
-        "ping": {"celery@host": {"ok": "pong"}},
-        "stats": {"celery@host": {"pool": {"max-concurrency": 1, "processes": [1]}}},
-    }
-    control = FailingControl(inspect_data)
-    monkeypatch.setattr(workers, "celery", make_celery(control))
-
-    with pytest.raises(workers.WorkerCommandError):
-        workers.execute_worker_command("celery@host", "restart")
-
-
-def test_get_worker_overview_when_control_missing(monkeypatch):
-    monkeypatch.setattr(workers, "celery", types.SimpleNamespace(control=None))
+def test_get_worker_overview_when_scheduler_missing(monkeypatch):
+    monkeypatch.setattr(workers, "scheduler", None)
+    monkeypatch.setattr(workers, "_get_scheduler", lambda: None)
 
     overview = workers.get_worker_overview()
 
     assert overview["status"] == "unavailable"
     assert overview["workers"] == []
+
+
+def test_execute_worker_command_controls_scheduler(monkeypatch):
+    dummy = DummyScheduler()
+    monkeypatch.setattr(workers, "scheduler", dummy)
+    monkeypatch.setattr(workers, "_get_scheduler", lambda: dummy)
+
+    start_result = workers.execute_worker_command("scheduler", "start")
+    assert start_result["status"] == "ok"
+    assert ("start", None) in dummy.commands
+
+    stop_result = workers.execute_worker_command("scheduler", "stop")
+    assert stop_result["status"] == "ok"
+    assert ("stop", None) in dummy.commands
+
+    restart_result = workers.execute_worker_command("scheduler", "restart")
+    assert restart_result["status"] == "ok"
+    assert ("restart", None) in dummy.commands
+
+
+def test_execute_worker_command_controls_jobs(monkeypatch):
+    dummy = DummyScheduler()
+    monkeypatch.setattr(workers, "scheduler", dummy)
+    monkeypatch.setattr(workers, "_get_scheduler", lambda: dummy)
+
+    start_result = workers.execute_worker_command("run_due_sources", "start")
+    assert start_result["status"] == "ok"
+    assert ("enable", "run_due_sources") in dummy.commands
+
+    stop_result = workers.execute_worker_command("run_due_sources", "stop")
+    assert stop_result["status"] == "ok"
+    assert ("disable", "run_due_sources") in dummy.commands
+
+    restart_result = workers.execute_worker_command("run_due_sources", "restart")
+    assert restart_result["status"] == "ok"
+    assert ("trigger", "run_due_sources") in dummy.commands
+
+
+def test_execute_worker_command_validates(monkeypatch):
+    dummy = DummyScheduler()
+    monkeypatch.setattr(workers, "scheduler", dummy)
+    monkeypatch.setattr(workers, "_get_scheduler", lambda: dummy)
+
+    with pytest.raises(ValueError):
+        workers.execute_worker_command("scheduler", "invalid")
+
+    dummy.jobs.clear()
+    with pytest.raises(workers.WorkerUnavailableError):
+        workers.execute_worker_command("unknown", "restart")
+
+    def raise_error(*_args, **_kwargs):
+        raise RuntimeError("kaputt")
+
+    dummy.jobs["run_due_sources"] = object()
+    monkeypatch.setattr(dummy, "trigger_job", raise_error)
+    with pytest.raises(workers.WorkerCommandError):
+        workers.execute_worker_command("run_due_sources", "restart")

@@ -7,29 +7,16 @@ services:
     env_file:
       - .env
     depends_on:
-      - redis
       - postgres
       - opensearch
-  worker:
+  scheduler:
     build: .
-    command: celery -A celery_app.celery worker --loglevel=INFO
+    command: python scheduler_app.py
     volumes:
       - .:/app
     env_file:
       - .env
     depends_on:
-      - redis
-      - postgres
-      - opensearch
-  beat:
-    build: .
-    command: celery -A celery_app.celery beat --loglevel=INFO
-    volumes:
-      - .:/app
-    env_file:
-      - .env
-    depends_on:
-      - redis
       - postgres
       - opensearch
   nginx:
@@ -40,8 +27,6 @@ services:
       - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       - web
-  redis:
-    image: redis:7
   postgres:
     image: postgres:14
     environment:

@@ -1,4 +1,4 @@
-Tasks.md — Gematria Observer (Flask + Celery + OpenSearch) ⌬
+Tasks.md — Gematria Observer (Flask + Scheduler + OpenSearch) ⌬
 
 Kurzer Sinn & Zweck: Headlines & Social-Feeds einsammeln → Gematria-Werte berechnen → Muster/Verbindungen erkennen → interaktive Dashboards & Alerts.
 Modul-Ziele: saubere Services, wiederholbare Deployments, reproduzierbare Analysen, klare Tests & Observability.
@@ -42,7 +42,7 @@ Flask, gunicorn, Jinja2, Flask-Login, Flask-WTF
 
 SQLAlchemy, Alembic, psycopg2-binary
 
-Celery, redis
+Python Scheduler (threading)
 
 requests, feedparser, python-dateutil
 
@@ -63,7 +63,8 @@ FLASK_ENV=production
 SECRET_KEY=change-me
 DATABASE_URL=postgresql+psycopg2://gematria:gematria@postgres:5432/gematria
 OPENSEARCH_HOST=http://opensearch:9200
-REDIS_URL=redis://redis:6379/0
+REDIS_URL=
+SCHEDULER_MAX_WORKERS=4
 SENTRY_DSN=
 
 
@@ -153,9 +154,9 @@ DoD: 100% Tests für compute_all, Benchmarks (<0.2ms/Headline avg. lokal).
 
 ---
 
-4) Ingestion Pipelines (Celery)
+4) Ingestion Pipelines (Scheduler)
 
-[x] Celery-App celery_app.py + Beat-Schedule
+[x] Scheduler-App scheduler_app.py + Job-Registry
 
 [x] RSS/Atom Ingest (app/services/ingest/rss.py)
 
@@ -179,7 +180,7 @@ index_item_to_opensearch(item_id)
 evaluate_alerts()
 
 
-[ ] Beat-Plan: pro Source interval_sec dynamisch
+[ ] Job-Plan: pro Source interval_sec dynamisch
 
 
 Akzeptanz: make seed-rss fügt 1–2 Feeds hinzu; make run-once zieht Items, berechnet Gematria, indiziert OS.
@@ -516,7 +517,7 @@ DoD: Badge im README.
 4. Gematria-Engine + Tests (Task 3).
 
 
-5. RSS-Ingest + Celery-Beat (Task 4).
+5. RSS-Ingest + Scheduler (Task 4).
 
 
 6. Minimal-API + UI Stream (Task 5 & 6).
