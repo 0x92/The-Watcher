@@ -30,5 +30,8 @@ COPY . .
 # Frontend bauen (falls vorhanden)
 RUN npm run build
 
+RUN chmod +x scripts/entrypoint.sh
+
 EXPOSE 5000
+ENTRYPOINT ["./scripts/entrypoint.sh"]
 CMD ["gunicorn", "wsgi:app", "--bind", "0.0.0.0:5000", "--workers", "3", "--threads", "2", "--timeout", "60"]
