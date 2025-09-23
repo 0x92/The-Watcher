@@ -1,5 +1,10 @@
--- Database schema for The Watcher application.
 -- This script is idempotent and can be executed multiple times safely.
+
+-- Ensure the default schema exists and is active for the session. This avoids
+-- "no schema has been selected to create in" errors when the search_path is
+-- cleared by managed database providers or client configuration.
+CREATE SCHEMA IF NOT EXISTS public;
+SET search_path TO public;
 
 CREATE TABLE IF NOT EXISTS sources (
     id SERIAL PRIMARY KEY,
