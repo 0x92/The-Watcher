@@ -81,7 +81,9 @@ Makefile            Common development and deployment helpers
    ```
 5. The UI and API are served via Nginx on [http://localhost](http://localhost). The Flask service
    itself listens on port 5000. PostgreSQL and OpenSearch are exposed on their standard ports for
-   debugging.
+   debugging, and pgAdmin is available on [http://localhost:5050](http://localhost:5050) with the
+   default credentials `admin@example.com` / `admin` (adjust these in `docker-compose.yml` or your
+   `.env`).
 6. Optional: initialize the OpenSearch index from a Python shell using
    `app.services.search.create_items_index`.
 
