@@ -7,21 +7,43 @@ from typing import Dict
 
 from flask import current_app, g
 
-_DEFAULT_LOCALE = "de"
+from pathlib import Path
+
+_DEFAULT_LOCALE = "en"
 _SUPPORTED_LOCALES = ("de", "en")
 _TRANSLATION_DIR = "translations"
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _catalog_path(locale: str) -> Path | None:
+    candidates = []
+    if current_app:
+        candidates.append(Path(current_app.root_path))
+    candidates.append(_PROJECT_ROOT)
+    candidates.append(Path(os.getcwd()))
+    seen: set[Path] = set()
+    for base in candidates:
+        base = base.resolve()
+        if base in seen:
+            continue
+        seen.add(base)
+        path = base / _TRANSLATION_DIR / f"{locale}.json"
+        if path.exists():
+            return path
+    return None
 
 
 @lru_cache(maxsize=len(_SUPPORTED_LOCALES))
 def _load_catalog(locale: str) -> Dict[str, str]:
     locale = locale if locale in _SUPPORTED_LOCALES else _DEFAULT_LOCALE
-    base_path = current_app.root_path if current_app else os.getcwd()
-    path = os.path.join(base_path, _TRANSLATION_DIR, f"{locale}.json")
-    if not os.path.exists(path):
+    path = _catalog_path(locale)
+    if path is None and locale != _DEFAULT_LOCALE:
+        path = _catalog_path(_DEFAULT_LOCALE)
         locale = _DEFAULT_LOCALE
-        path = os.path.join(base_path, _TRANSLATION_DIR, f"{locale}.json")
+    if path is None:
+        return {}
     try:
-        with open(path, "r", encoding="utf-8") as handle:
+        with path.open("r", encoding="utf-8") as handle:
             data = json.load(handle)
     except (OSError, json.JSONDecodeError):
         data = {}
@@ -32,8 +54,9 @@ def get_locale() -> str:
     return getattr(g, "ui_locale", _DEFAULT_LOCALE)
 
 
-def set_locale(locale: str) -> None:
-    g.ui_locale = locale if locale in _SUPPORTED_LOCALES else _DEFAULT_LOCALE
+def set_locale(locale: str | None) -> None:
+    candidate = (locale or "").split("-", 1)[0].lower()
+    g.ui_locale = candidate if candidate in _SUPPORTED_LOCALES else _DEFAULT_LOCALE
 
 
 def translate(key: str, *, locale: str | None = None, default: str | None = None) -> str:

@@ -15,6 +15,7 @@ from app.blueprints.auth import auth_bp
 from app.blueprints.ui import ui_bp
 from app.extensions import csrf, limiter, login_manager
 from app.security import get_user_by_id
+from app.services.translations import set_locale, translate
 
 try:  # pragma: no cover - optional dependency
     import sentry_sdk
@@ -39,6 +40,8 @@ def create_app() -> Flask:
 
     app = Flask(__name__)
     app.config.from_object("config.Config")
+
+    app.jinja_env.globals.setdefault("_t", translate)
 
     # Ensure a development-friendly secret key when none has been configured.
     app.config.setdefault("SECRET_KEY", os.getenv("SECRET_KEY", "dev-secret"))
@@ -85,7 +88,17 @@ def create_app() -> Flask:
             "navigation_items": accessible_items,
         }
 
-        @app.before_request\n    def _set_locale() -> None:\n        preferred = request.args.get("lang") or request.headers.get("X-Locale")\n        if not preferred and request.accept_languages:\n            preferred = request.accept_languages.best_match(["de", "en"])\n        if preferred:\n            set_locale(preferred.lower())\n        else:\n            set_locale("de")\n\n    @app.before_request
+    @app.before_request
+    def _set_locale() -> None:
+        preferred = request.args.get("lang") or request.headers.get("X-Locale")
+        if not preferred and request.accept_languages:
+            preferred = request.accept_languages.best_match(["de", "en"])
+        if preferred:
+            set_locale(preferred)
+        else:
+            set_locale(None)
+
+    @app.before_request
     def _start_timer() -> None:  # pragma: no cover - request timing
         g.start_time = time.perf_counter()
 
