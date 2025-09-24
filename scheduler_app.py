@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import logging
 import os
@@ -14,7 +14,7 @@ from prometheus_client import Gauge, Histogram
 
 from app import create_app
 from app.logging import configure_logging
-from app.tasks.ingest import discover_patterns, evaluate_alerts, run_due_sources
+from app.tasks.ingest import discover_patterns, evaluate_alerts, run_due_sources\nfrom app.services.analytics.gematria_rollups import refresh_rollups_job
 
 try:  # pragma: no cover - optional dependency
     import sentry_sdk
@@ -347,6 +347,7 @@ scheduler.register_job("ping", ping, interval=60.0)
 scheduler.register_job("run_due_sources", run_due_sources, interval=60.0)
 scheduler.register_job("evaluate_alerts", evaluate_alerts, interval=120.0, start_after=30.0)
 scheduler.register_job("discover_patterns", discover_patterns, interval=900.0, start_after=120.0)
+scheduler.register_job("refresh_gematria_rollups", refresh_rollups_job, interval=900.0, start_after=180.0)
 
 
 def main() -> None:
@@ -360,3 +361,4 @@ def main() -> None:
 
 if __name__ == "__main__":  # pragma: no cover - manual execution
     main()
+

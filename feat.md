@@ -1,4 +1,4 @@
-# Gematria Crawler Overhaul Concept
+﻿# Gematria Crawler Overhaul Concept
 
 ## Phase 1 - Crawler Core & Logging
 - [ ] Entkopple den bisherigen Scheduler in `scheduler_app.py`/`celery_app.py` und fuehre ein Worker-Registry-Modul ein, das alle laufenden Crawler-Threads mit UUID, Ziel-Feed und Status haelt.
@@ -17,19 +17,22 @@
 - [ ] Verknuepfe Gematria-Berechnung (`app/services/gematria/ciphers.py`) mit dem Ingest-Flow, persistiere Werte in `gematria_values` und indexiere fuer Analytics.
 - [ ] Ergaenze Observability: strukturierte Logs, Metrics (Prom/StatsD) sowie Unit-/Integrationstests fuer Registry, Health-Checks und Gematria-Persistenz.
 
-## Phase 3 - Worker & Source Management UI/API
-- [ ] Baue API-Endpunkte `/api/crawlers` (Liste, Details, Aktionen) und `/api/crawlers/feeds` (Health, Statistiken, Auto-Discovery Queue) mit Role-Based Access.
-- [ ] Implementiere eine Admin-UI-Seite `app/templates/ui/crawlers.html` + Frontend-Store (Vue/React) fuer Thread-Overview (Status, Durchsatz, letzter Run, Fehlertrend) mit Live-Updates per Websocket/SSE.
-- [ ] Erstelle Source-Management-Module: Listen/Filtern, neuen Feed anlegen, bestehenden Feed deaktivieren/loeschen, manuelle Health-Pruefung triggern, Auto-Discovery-Vorschlaege annehmen.
-- [ ] Fuege Bulk-Actions & Notizen fuer Quellen hinzu (z.B. Tags, Prioritaet), damit Analysten Quellen kuratieren koennen.
-- [ ] Schreibe End-to-End- und API-Tests (pytest + Playwright/Cypress) fuer Source-CRUD, Health-Check-Flow und Worker-Ansicht.
+## Phase 3 - Worker & Source Management UI/API (Implementation)
+- [x] Schliesse `app/blueprints/api/crawlers.py` ab: Filter/Pagination, Bulk-Actions, Health-Check-Trigger, Worker-Control und SSE-Stream inkl. RBAC/CSRF.
+- [x] Implementiere `app/services/crawlers.py` und `app/services/worker_state.py`: Cache-Bridging (Redis/In-Memory), Statusaggregation, Fehlerzaehler, Discovery-Queue.
+- [x] Aktualisiere Datenmodell (`app/models/source.py`, Alembic-Migration, `database-schema.sql`): Priority, Tags, Notizen, Discovery-Flags, Timestamps, Indizes.
+- [x] Richte Admin-Ansicht `app/templates/ui/crawlers.html` + `frontend/modules/crawlers.js` ein: Tabellen-Layout, Detail-Sidebar, Filter/Sortierung, Bulk-Actions.
+- [x] Implementiere Interaktionen in `frontend/main.js` und `assets/style.css`: Formulare fuer Create/Update, SSE-Heartbeat-Anzeige, Health-Badges, Navigationslink.
+- [x] Ergaenze Tests: `tests/test_api_crawlers.py`, Service-Tests fuer Worker-State, Snapshot/Component-Tests fuer UI, E2E-Flows (Playwright/Cypress) fuer Source-CRUD und Health-Checks.
+- [x] Dokumentiere Admin-Workflows (`docs/admin/crawlers.md`) und aktualisiere Beispielkonfigurationen (`.env.example`, `seed_sources.py`) fuer neue Felder.
 
-## Phase 4 - Mathematische Analytics & Dashboard
-- [ ] Implementiere Service `app/services/analytics/gematria_rollups.py`, der Aggregationen pro Zeitfenster (24h, 48h, 7d) ueber Headlines, Summen, Top-Werte, Korrelationen liefert.
-- [ ] Stelle REST/GraphQL-Endpoints `/api/analytics/gematria` bereit mit Parametern fuer Zeitfenster, Cipher, Quelle, Ranking-Strategien.
-- [ ] Aktualisiere Dashboard-UI (`app/templates/ui/dashboard.html`) mit Widgets fuer Gematria-Verteilung, Outlier Alerts, Feed-Vergleich und Drilldown auf Item-Ebene.
-- [ ] Erweitere vorhandene analytische Tools (z.B. Alerts, Pattern-Discovery) um Gematria-Daten (Filter, Highlighting, Export).
-- [ ] Dokumentiere neue Metriken und Analyse-Workflows in `README.md`/`docs/analytics.md` und fuege Monitoring/Alerting-Checks fuer Ausfall der Aggregationen hinzu.
+## Phase 4 - Mathematische Analytics & Dashboard (Implementation)
+- [x] Implementiere Aggregations-Service `app/services/analytics/gematria_rollups.py`: Zeitfenster (24h/48h/7d), Top-Werte, Trendlinien, Korrelationen.
+- [x] Baue Scheduler/Jobs (`celery_app.py`, `scripts/backfill_gematria.py`) zum Befuellen der Rollups + Backfill bestehender Headlines.
+- [x] Exponiere REST/GraphQL-Endpoints in `app/blueprints/api/analytics.py` mit Parametern fuer Zeitfenster, Cipher, Quellen, Rankings.
+- [x] Erweitere Dashboard-UI (`app/templates/ui/dashboard.html`, `frontend/modules/analytics.js`) um Widgets, Drilldowns, Export.
+- [x] Integriere Alerts/Pattern-Discovery auf Basis neuer Daten, inkl. Filter/Highlighting und Berechtigungen.
+- [x] Schreibe Tests fuer Aggregationen (`tests/services/test_gematria_rollups.py`), API (`tests/test_api_analytics.py`) und UI (Playwright/Cypress).
 
 ## Phase 5 - Erweiterte Auto-Discovery (Optional)
 - [ ] Trainiere/konfiguriere heuristische oder ML-basierte Bewertung fuer vorgeschlagene Feeds (z.B. basierend auf Domain, Update-Frequenz, historischen Treffern).
@@ -41,3 +44,4 @@
 - [ ] Erweitere Docker/Docker-Compose-Setup um neue Services (Redis/Queue falls noetig) und stelle sicher, dass Worker-Status + Analytics in allen Umgebungen laufen.
 - [ ] Schreibe Migrations-/Rollback-Plan inkl. Backfill-Skripten (`scripts/backfill_gematria.py`, `scripts/migrate_sources.py`).
 - [ ] Fuehre Performance-/Load-Tests fuer Crawler + Analytics durch und dokumentiere Ergebnisse/Optimierungen.
+

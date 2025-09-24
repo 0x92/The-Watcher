@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import os
 from typing import Dict
@@ -38,7 +38,7 @@ def get_engine(url: str | None = None) -> Engine:
     if engine is None:
         engine = create_engine(resolved)
         _ENGINE_CACHE[resolved] = engine
-        _SESSION_CACHE[resolved] = sessionmaker(bind=engine)
+        _SESSION_CACHE[resolved] = sessionmaker(bind=engine, expire_on_commit=False)
         _ensure_schema(engine, resolved)
     return engine
 
@@ -50,3 +50,4 @@ def get_session(url: str | None = None) -> Session:
         engine = get_engine(resolved)
         factory = _SESSION_CACHE[resolved]
     return factory()
+

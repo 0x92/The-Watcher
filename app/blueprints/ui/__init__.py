@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 import time
@@ -275,4 +275,5 @@ def heatmap_stream() -> Response:
 
     headers = {"Cache-Control": "no-cache"}
     return Response(event_stream(), mimetype="text/event-stream", headers=headers)
+
 

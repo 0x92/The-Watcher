@@ -1,4 +1,4 @@
-import "./styles/theme.css";
+﻿import "./styles/theme.css";
 import "./styles/layout.css";
 import "./styles/components.css";
 
@@ -68,3 +68,4 @@ requestAnimationFrame(() => {
     initializer();
   }
 });
+

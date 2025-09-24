@@ -108,6 +108,23 @@ class Gematria(Base):
     item: Mapped["Item"] = relationship("Item", back_populates="gematria")
 
 
+
+class GematriaRollup(Base):
+    __tablename__ = "gematria_rollups"
+    __table_args__ = (
+        UniqueConstraint("scope", "window_hours", "scheme", name="uq_gematria_rollups_scope_window_scheme"),
+        Index("ix_gematria_rollups_scope", "scope"),
+        Index("ix_gematria_rollups_window_scheme", "window_hours", "scheme"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    scope: Mapped[str] = mapped_column(String(255), nullable=False)
+    window_hours: Mapped[int] = mapped_column(Integer, nullable=False)
+    scheme: Mapped[str] = mapped_column(String(50), nullable=False)
+    computed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    payload: Mapped[dict] = mapped_column(JSON, nullable=False)
+
+
 class Tag(Base):
     __tablename__ = "tags"
 

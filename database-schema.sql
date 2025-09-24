@@ -1,4 +1,4 @@
--- This script is idempotent and can be executed multiple times safely.
+﻿-- This script is idempotent and can be executed multiple times safely.
 
 -- Ensure the default schema exists and is active for the session. This avoids
 -- "no schema has been selected to create in" errors when the search_path is
@@ -126,3 +126,4 @@ CREATE TABLE IF NOT EXISTS crawler_runs (
 
 CREATE INDEX IF NOT EXISTS ix_crawler_runs_started_at ON crawler_runs (started_at DESC);
 CREATE INDEX IF NOT EXISTS ix_crawler_runs_source_id ON crawler_runs (source_id, started_at DESC);
+

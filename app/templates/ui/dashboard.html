@@ -1,0 +1,110 @@
+﻿{% extends 'base.html' %}
+{% block content %}
+<section class="page-header">
+  <h1>Gematria Analytics Dashboard</h1>
+  <p>Verdichte Headlines nach Gematria-Schemen, erkenne Trends und priorisiere auffällige Quellen.</p>
+</section>
+
+<div class="analytics-grid" data-analytics-root>
+  <section class="card analytics-card">
+    <header class="card__header">
+      <div>
+        <h2>Auswahl</h2>
+        <p class="lead">Wähle Zeitraum, Cipher und Ranking.</p>
+      </div>
+      <div class="card__actions analytics-controls">
+        <label class="form-control">
+          <span>Zeitraum</span>
+          <select data-analytics-window>
+            <option value="24">24h</option>
+            <option value="48">48h</option>
+            <option value="168">7 Tage</option>
+          </select>
+        </label>
+        <label class="form-control">
+          <span>Cipher</span>
+          <select data-analytics-scheme></select>
+        </label>
+        <label class="form-control">
+          <span>Ranking</span>
+          <select data-analytics-ranking>
+            <option value="top">Top Werte</option>
+            <option value="sources">Quellen</option>
+            <option value="trend">Trend</option>
+          </select>
+        </label>
+        <button type="button" class="button" data-analytics-refresh>Aktualisieren</button>
+      </div>
+    </header>
+    <p class="status-message" data-analytics-status hidden></p>
+    <div class="stat-grid" data-analytics-summary>
+      <article class="stat-card" data-analytic-card="total">
+        <h3>Items</h3>
+        <p class="stat-card__value">-</p>
+        <p class="stat-card__meta">Summe / Durchschnitt</p>
+      </article>
+      <article class="stat-card" data-analytic-card="extrema">
+        <h3>Min &amp; Max</h3>
+        <p class="stat-card__value">-</p>
+        <p class="stat-card__meta">Median / P90 / P99</p>
+      </article>
+      <article class="stat-card" data-analytic-card="sources">
+        <h3>Quellen</h3>
+        <p class="stat-card__value">-</p>
+        <p class="stat-card__meta">Top &amp; Verteilung</p>
+      </article>
+      <article class="stat-card" data-analytic-card="correlation">
+        <h3>Korrelation</h3>
+        <p class="stat-card__value">-</p>
+        <p class="stat-card__meta">Priority / Titellänge</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="card analytics-card" data-analytics-top>
+    <header class="card__header">
+      <div>
+        <h2>Top Gematria Werte</h2>
+        <p class="lead">Häufigste Werte inklusive Beispieltiteln.</p>
+      </div>
+    </header>
+    <ul class="insight-list" data-analytics-top-list>
+      <li class="placeholder">Noch keine Daten vorhanden.</li>
+    </ul>
+  </section>
+
+  <section class="card analytics-card" data-analytics-sources>
+    <header class="card__header">
+      <div>
+        <h2>Quellenanalyse</h2>
+        <p class="lead">Vergleiche Trefferhäufigkeit und Durchschnittswerte.</p>
+      </div>
+    </header>
+    <table class="analytics-table" data-analytics-source-table>
+      <thead>
+        <tr>
+          <th>Quelle</th>
+          <th>Items</th>
+          <th>Ø Wert</th>
+          <th>Priorität</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="placeholder"><td colspan="4">Noch keine Daten vorhanden.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="card analytics-card" data-analytics-trend>
+    <header class="card__header">
+      <div>
+        <h2>Trendlinien</h2>
+        <p class="lead">Zeitliche Entwicklung der Werte.</p>
+      </div>
+    </header>
+    <ul class="insight-list" data-analytics-trend-list>
+      <li class="placeholder">Noch keine Daten vorhanden.</li>
+    </ul>
+  </section>
+</div>
+{% endblock %}

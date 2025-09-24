@@ -15,6 +15,7 @@ pydantic
 PyYAML
 python-dotenv
 prometheus-client
+redis
 sentry-sdk
 # tests
 pytest

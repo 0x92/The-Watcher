@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List
 
@@ -10,6 +12,29 @@ from sqlalchemy.orm import Session
 
 from app.models import Setting
 from app.services.gematria import DEFAULT_ENABLED_SCHEMES, SCHEMES
+
+def _env_bool(name: str, default: bool) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    lowered = value.strip().lower()
+    if lowered in {"1", "true", "yes", "on"}:
+        return True
+    if lowered in {"0", "false", "no", "off"}:
+        return False
+    return default
+
+
+def _env_int(name: str, default: int, *, minimum: int = 0) -> int:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return default
+    return max(minimum, parsed)
+
 
 
 @dataclass(frozen=True)
@@ -21,7 +46,11 @@ class WorkerSettingsDefaults:
     max_sources_per_cycle: int = 10
 
 
-DEFAULT_WORKER_SETTINGS = WorkerSettingsDefaults()
+DEFAULT_WORKER_SETTINGS = WorkerSettingsDefaults(
+    scrape_enabled=_env_bool("WORKER_SCRAPE_ENABLED", True),
+    default_interval_minutes=_env_int("WORKER_DEFAULT_INTERVAL_MINUTES", 15, minimum=1),
+    max_sources_per_cycle=_env_int("WORKER_MAX_SOURCES_PER_CYCLE", 10, minimum=0),
+)
 WORKER_SETTING_KEY = "worker.scrape"
 
 

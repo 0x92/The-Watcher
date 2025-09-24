@@ -1,4 +1,4 @@
-from app import create_app
+﻿from app import create_app
 
 
 USERS = {
@@ -75,3 +75,4 @@ def test_stream_live_rejects_invalid_parameters():
     response = client.get("/stream/live?value=abc")
     assert response.status_code == 400
     assert "error" in response.get_json()
+
