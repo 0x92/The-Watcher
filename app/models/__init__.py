@@ -34,9 +34,35 @@ class Source(Base):
     auth_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     filters_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     last_run_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    last_status: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    last_error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    last_duration_ms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    last_item_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    consecutive_failures: Mapped[int] = mapped_column(Integer, default=0)
+    last_checked_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    auto_discovered: Mapped[bool] = mapped_column(Boolean, default=False)
+    discovered_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     items: Mapped[List["Item"]] = relationship("Item", back_populates="source")
+    runs: Mapped[List["CrawlerRun"]] = relationship(
+        "CrawlerRun", back_populates="source", cascade="all, delete-orphan"
+    )
+
+
+class CrawlerRun(Base):
+    __tablename__ = "crawler_runs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    source_id: Mapped[int] = mapped_column(ForeignKey("sources.id"), nullable=False)
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    status: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    items_fetched: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    duration_ms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    source: Mapped["Source"] = relationship("Source", back_populates="runs")
 
 
 class Item(Base):

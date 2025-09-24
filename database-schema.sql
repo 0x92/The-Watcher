@@ -100,3 +100,26 @@ CREATE TABLE IF NOT EXISTS patterns (
     item_ids JSONB,
     meta JSONB
 );
+
+ALTER TABLE IF NOT EXISTS sources ADD COLUMN IF NOT EXISTS last_status VARCHAR(32);
+ALTER TABLE IF NOT EXISTS sources ADD COLUMN IF NOT EXISTS last_error TEXT;
+ALTER TABLE IF NOT EXISTS sources ADD COLUMN IF NOT EXISTS last_duration_ms INTEGER;
+ALTER TABLE IF NOT EXISTS sources ADD COLUMN IF NOT EXISTS last_item_count INTEGER;
+ALTER TABLE IF NOT EXISTS sources ADD COLUMN IF NOT EXISTS consecutive_failures INTEGER DEFAULT 0;
+ALTER TABLE IF NOT EXISTS sources ADD COLUMN IF NOT EXISTS last_checked_at TIMESTAMP;
+ALTER TABLE IF NOT EXISTS sources ADD COLUMN IF NOT EXISTS auto_discovered BOOLEAN DEFAULT FALSE;
+ALTER TABLE IF NOT EXISTS sources ADD COLUMN IF NOT EXISTS discovered_at TIMESTAMP;
+
+CREATE TABLE IF NOT EXISTS crawler_runs (
+    id SERIAL PRIMARY KEY,
+    source_id INTEGER NOT NULL REFERENCES sources(id) ON DELETE CASCADE,
+    started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    finished_at TIMESTAMP,
+    status VARCHAR(32),
+    items_fetched INTEGER,
+    duration_ms INTEGER,
+    error TEXT
+);
+
+CREATE INDEX IF NOT EXISTS ix_crawler_runs_started_at ON crawler_runs (started_at DESC);
+CREATE INDEX IF NOT EXISTS ix_crawler_runs_source_id ON crawler_runs (source_id, started_at DESC);

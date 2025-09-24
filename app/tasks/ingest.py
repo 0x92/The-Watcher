@@ -1,21 +1,28 @@
+
 """Scheduler-backed tasks for ingesting sources, deriving metrics and discovering patterns."""
 
 from __future__ import annotations
 
+import logging
 import os
-from datetime import datetime, timedelta
-from typing import Dict
+import time
+from datetime import datetime, timedelta, timezone
+from typing import Dict, List, Optional
+from urllib.parse import urlparse
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import get_session
-from app.models import Gematria, Item, Pattern, Source
+from app.models import CrawlerRun, Gematria, Item, Pattern, Source
 from app.services.alerts import evaluate_alerts as evaluate_alerts_service
 from app.services.gematria import compute_all, normalize
-from app.services.ingest import fetch
-from app.services.settings import get_gematria_settings, get_worker_settings
+from app.services.ingest import FeedFetchResult, fetch
 from app.services.nlp import cluster_embeddings, embed_items
+from app.services.settings import get_gematria_settings, get_worker_settings
+from app.services.worker_state import ingestion_tracker
+
+LOGGER = logging.getLogger(__name__)
 
 
 # --- Session utilities -----------------------------------------------------
@@ -28,13 +35,25 @@ def _session_from_env() -> Session:
     return get_session(database_url)
 
 
+def _derive_source_name(url: str, fallback: str | None = None) -> str:
+    parsed = urlparse(url)
+    host = parsed.netloc.split(':', 1)[0] if parsed.netloc else ""
+    if host:
+        return host
+    if parsed.path:
+        trimmed = parsed.path.strip('/')
+        if trimmed:
+            return trimmed.split('/')[0]
+    return fallback or url
+
+
 # --- Core logic ------------------------------------------------------------
 
 
 def compute_gematria_for_item(
     item_id: int, *, session: Session | None = None
 ) -> Dict[str, int]:
-    """Compute gematria for the given item and persist a single scheme."""
+    """Compute gematria for the given item and persist configured schemes."""
     close = False
     if session is None:
         session = _session_from_env()
@@ -49,8 +68,6 @@ def compute_gematria_for_item(
     gematria_settings = get_gematria_settings(session)
     enabled_schemes = gematria_settings.get("enabled_schemes", [])
     if enabled_schemes:
-        # Preserve user-defined ordering but avoid duplicates that could trigger
-        # redundant INSERTs for the same (item_id, scheme) pair.
         enabled_schemes = list(dict.fromkeys(enabled_schemes))
     ignore_pattern = gematria_settings.get("ignore_pattern", r"[^A-Z]")
     values = compute_all(item.title, enabled_schemes, ignore_pattern=ignore_pattern)
@@ -92,8 +109,33 @@ def compute_gematria_for_item(
     return computed
 
 
+def _apply_discovered_feeds(
+    session: Session, source: Source, result: FeedFetchResult, *, source_name: str
+) -> None:
+    created = 0
+    for feed_url in result.discovered_feeds:
+        if not feed_url or feed_url == source.endpoint:
+            continue
+        exists = session.query(Source).filter_by(endpoint=feed_url).first()
+        if exists:
+            continue
+        discovered = Source(
+            name=_derive_source_name(feed_url, fallback=f"{source_name} feed"),
+            type="rss",
+            endpoint=feed_url,
+            enabled=False,
+            interval_sec=source.interval_sec,
+            auto_discovered=True,
+            discovered_at=datetime.utcnow(),
+        )
+        session.add(discovered)
+        created += 1
+    if created:
+        LOGGER.info("Discovered %s candidate feeds from %s", created, source.endpoint)
+
+
 def run_source(source_id: int, *, session: Session | None = None) -> int:
-    """Fetch a source's feed and store new items."""
+    """Fetch a source's feed, store new items and update crawler telemetry."""
     close = False
     if session is None:
         session = _session_from_env()
@@ -111,29 +153,113 @@ def run_source(source_id: int, *, session: Session | None = None) -> int:
             session.close()
         return 0
 
-    entries, _, _ = fetch(source.endpoint)
+    source_name = source.name or _derive_source_name(source.endpoint)
+    endpoint = source.endpoint
+    tracker_started_at = datetime.now(timezone.utc)
+    job_id = ingestion_tracker.job_started(source_id=source.id, name=source_name, endpoint=endpoint)
+    started_at = datetime.utcnow()
+    start_perf = time.perf_counter()
+    status = "running"
+    error_text: Optional[str] = None
     new_count = 0
-    for entry in entries:
-        exists = session.query(Item).filter_by(dedupe_hash=entry.dedupe_hash).first()
-        if exists:
-            continue
-        item = Item(
-            source_id=source.id,
-            url=entry.url,
-            title=entry.title,
-            published_at=entry.published_at,
-            dedupe_hash=entry.dedupe_hash,
-        )
-        session.add(item)
-        session.flush()
-        compute_gematria_for_item(item.id, session=session)
-        new_count += 1
+    duration_ms: Optional[int] = None
 
-    source.last_run_at = datetime.utcnow()
-    session.commit()
-    if close:
-        session.close()
-    return new_count
+    try:
+        result = fetch(endpoint)
+        ingestion_tracker.job_progress(job_id, items_fetched=len(result.entries))
+
+        for entry in result.entries:
+            exists = session.query(Item).filter_by(dedupe_hash=entry.dedupe_hash).first()
+            if exists:
+                continue
+            item = Item(
+                source_id=source.id,
+                url=entry.url,
+                title=entry.title,
+                published_at=entry.published_at,
+                dedupe_hash=entry.dedupe_hash,
+            )
+            session.add(item)
+            session.flush()
+            compute_gematria_for_item(item.id, session=session)
+            new_count += 1
+            ingestion_tracker.job_progress(job_id, items_fetched=new_count)
+
+        _apply_discovered_feeds(session, source, result, source_name=source_name)
+
+        now = datetime.utcnow()
+        duration_ms = int((time.perf_counter() - start_perf) * 1000)
+        if new_count:
+            status = "ok"
+        elif result.entries:
+            status = "unchanged"
+        else:
+            status = "empty"
+
+        source.last_run_at = now
+        source.last_checked_at = now
+        source.last_status = status
+        source.last_error = None
+        source.last_duration_ms = duration_ms
+        source.last_item_count = new_count
+        source.consecutive_failures = 0
+
+        session.add(
+            CrawlerRun(
+                source_id=source.id,
+                started_at=started_at,
+                finished_at=now,
+                status=status,
+                items_fetched=new_count,
+                duration_ms=duration_ms,
+                error=None,
+            )
+        )
+        session.commit()
+        return new_count
+    except Exception as exc:  # pragma: no cover - defensive logging
+        session.rollback()
+        status = "error"
+        error_text = str(exc)
+        LOGGER.exception("Ingestion failed for %s", endpoint)
+        try:
+            failing_source = session.get(Source, source_id)
+            if failing_source is not None:
+                now = datetime.utcnow()
+                failing_source.last_checked_at = now
+                failing_source.last_status = status
+                failing_source.last_error = error_text[:500]
+                failing_source.consecutive_failures = (failing_source.consecutive_failures or 0) + 1
+                session.add(
+                    CrawlerRun(
+                        source_id=failing_source.id,
+                        started_at=started_at,
+                        finished_at=now,
+                        status=status,
+                        items_fetched=0,
+                        duration_ms=None,
+                        error=error_text[:1000],
+                    )
+                )
+                session.commit()
+        except Exception:  # pragma: no cover - defensive fallback
+            session.rollback()
+        return 0
+    finally:
+        duration = int((time.perf_counter() - start_perf) * 1000) if duration_ms is None else duration_ms
+        ingestion_tracker.job_finished(
+            job_id,
+            source_id=source_id,
+            name=source_name,
+            endpoint=endpoint,
+            started_at=tracker_started_at,
+            status=status,
+            items_fetched=new_count,
+            duration_ms=duration,
+            error=error_text,
+        )
+        if close:
+            session.close()
 
 
 def run_due_sources(*, session: Session | None = None) -> int:
@@ -162,8 +288,10 @@ def run_due_sources(*, session: Session | None = None) -> int:
         if interval and source.last_run_at:
             if source.last_run_at + timedelta(seconds=interval) > now:
                 continue
-        run_source(source.id, session=session)
+        created = run_source(source.id, session=session)
         processed += 1
+        if created:
+            LOGGER.debug("Source %s produced %s new items", source.id, created)
 
     if close:
         session.close()
