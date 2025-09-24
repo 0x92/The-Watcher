@@ -4,6 +4,7 @@ const FEEDS_ENDPOINT = "/api/crawlers/feeds";
 const FEED_BULK_ENDPOINT = "/api/crawlers/feeds/bulk";
 const WORKER_CONTROL_ENDPOINT = (worker) => `/api/crawlers/${worker}/control`;
 const HEALTH_CHECK_ENDPOINT = (id) => `/api/crawlers/feeds/${id}/actions/health-check`;
+const PROFILE_STORAGE_KEY = 'watcher:crawler-filters:v1';
 
 function updateStatus(element, message, state = "idle") {
   if (!element) {
@@ -72,10 +73,108 @@ export function initCrawlers() {
   const feedFilterReset = document.querySelector("[data-feed-filter-reset]");
   const feedCreateForm = document.querySelector("[data-feed-create-form]");
   const feedBulkForm = document.querySelector("[data-feed-bulk-form]");
+  const profileControls = document.querySelector(".profile-controls");
+  const profileSelect = document.querySelector("[data-feed-profile-select]");
+  const profileNameInput = document.querySelector("[data-feed-profile-name]");
+  const profileSaveButton = document.querySelector("[data-feed-profile-save]");
+  const profileUpdateButton = document.querySelector("[data-feed-profile-update]");
+  const profileDeleteButton = document.querySelector("[data-feed-profile-delete]");
+  const deleteConfirmMessage = profileControls?.dataset.profileDeleteConfirm || 'Delete profile?';
 
   if (!summaryContainer || !workersList || !feedList) {
     return;
   }
+
+  function readProfiles() {
+    try {
+      const raw = localStorage.getItem(PROFILE_STORAGE_KEY);
+      if (!raw) {
+        return {};
+      }
+      const parsed = JSON.parse(raw);
+      if (typeof parsed !== 'object' || parsed === null) {
+        return {};
+      }
+      return parsed;
+    } catch (error) {
+      console.warn('Failed to parse crawler profiles', error);
+      return {};
+    }
+  }
+
+  function persistProfiles(store) {
+    try {
+      profileStore = store;
+      localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(store));
+    } catch (error) {
+      console.warn('Failed to persist crawler profiles', error);
+    }
+  }
+
+  let profileStore = readProfiles();
+
+  function populateProfiles(selectedName = '') {
+    if (!profileSelect) {
+      return;
+    }
+    const defaultLabel = profileSelect.dataset.defaultLabel || (profileSelect.options[0] && profileSelect.options[0].textContent) || '';
+    profileSelect.innerHTML = '';
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = defaultLabel || '—';
+    profileSelect.appendChild(defaultOption);
+    Object.keys(profileStore)
+      .sort((a, b) => a.localeCompare(b))
+      .forEach((name) => {
+        const option = document.createElement('option');
+        option.value = name;
+        option.textContent = name;
+        if (name === selectedName) {
+          option.selected = true;
+        }
+        profileSelect.appendChild(option);
+      });
+  }
+
+  function captureFilters() {
+    if (!feedFilterForm) {
+      return { ...currentFilters };
+    }
+    const formData = new FormData(feedFilterForm);
+    return {
+      query: (formData.get('query') || '').toString().trim(),
+      type: (formData.get('type') || '').toString(),
+      enabled: (formData.get('enabled') || '').toString(),
+      tags: (formData.get('tags') || '').toString().trim(),
+      include_runs: formData.get('include_runs') === '1' || formData.get('include_runs') === 'on',
+    };
+  }
+
+  function applyProfileFilters(filters) {
+    if (!feedFilterForm || !filters) {
+      return;
+    }
+    const entries = [
+      ['query', filters.query || ''],
+      ['type', filters.type || ''],
+      ['enabled', filters.enabled || ''],
+      ['tags', filters.tags || ''],
+    ];
+    entries.forEach(([name, value]) => {
+      const input = feedFilterForm.querySelector(`[name="${name}"]`);
+      if (input) {
+        input.value = value;
+      }
+    });
+    const includeRunsField = feedFilterForm.querySelector('[name="include_runs"]');
+    if (includeRunsField) {
+      includeRunsField.checked = Boolean(filters.include_runs);
+    }
+    currentFilters = captureFilters();
+  }
+
+  populateProfiles();
+  currentFilters = captureFilters();
 
   let eventSource = null;
   let pollTimer = null;
@@ -364,17 +463,7 @@ export function initCrawlers() {
   }
 
   function getFilters() {
-    if (!feedFilterForm) {
-      return { ...currentFilters };
-    }
-    const formData = new FormData(feedFilterForm);
-    currentFilters = {
-      query: formData.get("query") || "",
-      type: formData.get("type") || "",
-      enabled: formData.get("enabled") || "",
-      tags: formData.get("tags") || "",
-      include_runs: formData.get("include_runs") === "1" || formData.get("include_runs") === "on",
-    };
+    currentFilters = captureFilters();
     return { ...currentFilters };
   }
 
@@ -696,13 +785,13 @@ export function initCrawlers() {
       if (feedFilterForm) {
         feedFilterForm.reset();
       }
-      currentFilters = {
-        query: "",
-        type: "",
-        enabled: "",
-        tags: "",
-        include_runs: false,
-      };
+      if (profileSelect) {
+        profileSelect.value = "";
+      }
+      if (profileNameInput) {
+        profileNameInput.value = "";
+      }
+      currentFilters = captureFilters();
       loadFeeds();
     });
   }
@@ -712,6 +801,107 @@ export function initCrawlers() {
       event.preventDefault();
       const formData = new FormData(feedCreateForm);
       createFeed(formData);
+    });
+  }
+
+  const savedLabel = profileControls?.dataset.profileSavedLabel || 'Saved';
+
+  if (profileSelect) {
+    populateProfiles(profileSelect.value || '');
+    profileSelect.addEventListener('change', () => {
+      const selectedName = profileSelect.value;
+      if (!selectedName) {
+        if (profileNameInput) {
+          profileNameInput.value = '';
+        }
+        if (feedFilterForm) {
+          feedFilterForm.reset();
+        }
+        currentFilters = captureFilters();
+        loadFeeds();
+        return;
+      }
+      const profile = profileStore[selectedName];
+      if (profile) {
+        applyProfileFilters(profile);
+        if (profileNameInput) {
+          profileNameInput.value = selectedName;
+        }
+        loadFeeds();
+      }
+    });
+  }
+
+  if (profileSaveButton) {
+    profileSaveButton.addEventListener('click', () => {
+      if (!feedFilterForm) {
+        return;
+      }
+      const name = (profileNameInput?.value || '').trim();
+      if (!name) {
+        profileNameInput?.focus();
+        profileNameInput?.classList.add('input--highlight');
+        setTimeout(() => profileNameInput?.classList.remove('input--highlight'), 600);
+        return;
+      }
+      profileStore[name] = captureFilters();
+      persistProfiles(profileStore);
+      populateProfiles(name);
+      if (profileSelect) {
+        profileSelect.value = name;
+      }
+      updateStatus(feedStatus, `${savedLabel}: ${name}`, 'success');
+    });
+  }
+
+  if (profileUpdateButton) {
+    profileUpdateButton.addEventListener('click', () => {
+      if (!feedFilterForm) {
+        return;
+      }
+      const selectedName = (profileSelect && profileSelect.value) || (profileNameInput && profileNameInput.value.trim()) || '';
+      if (!selectedName) {
+        profileSaveButton?.click();
+        return;
+      }
+      profileStore[selectedName] = captureFilters();
+      persistProfiles(profileStore);
+      populateProfiles(selectedName);
+      if (profileSelect) {
+        profileSelect.value = selectedName;
+      }
+      if (profileNameInput) {
+        profileNameInput.value = selectedName;
+      }
+      updateStatus(feedStatus, `${savedLabel}: ${selectedName}`, 'success');
+    });
+  }
+
+  if (profileDeleteButton) {
+    profileDeleteButton.addEventListener('click', () => {
+      const selectedName = profileSelect ? profileSelect.value : '';
+      const confirmMessage = deleteConfirmMessage + (selectedName ? ` ${selectedName}` : '');
+      if (!window.confirm(confirmMessage)) {
+        return;
+      }
+      if (selectedName) {
+        delete profileStore[selectedName];
+      } else {
+        profileStore = {};
+      }
+      persistProfiles(profileStore);
+      populateProfiles('');
+      if (profileSelect) {
+        profileSelect.value = '';
+      }
+      if (profileNameInput) {
+        profileNameInput.value = '';
+      }
+      if (feedFilterForm) {
+        feedFilterForm.reset();
+      }
+      currentFilters = captureFilters();
+      loadFeeds();
     });
   }
 

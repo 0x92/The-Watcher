@@ -16,14 +16,15 @@ ui_bp = Blueprint("ui", __name__)
 
 
 NAV_ITEMS = [
-    {"endpoint": "ui.overview", "label": "Overview", "roles": {"viewer", "analyst", "admin"}},
-    {"endpoint": "ui.stream", "label": "Stream", "roles": {"viewer", "analyst", "admin"}},
-    {"endpoint": "ui.heatmap", "label": "Heatmap", "roles": {"analyst", "admin"}},
-    {"endpoint": "ui.graph", "label": "Graph", "roles": {"analyst", "admin"}},
-    {"endpoint": "ui.alerts", "label": "Alerts", "roles": {"analyst", "admin"}},
-    {"endpoint": "ui.patterns", "label": "Patterns", "roles": {"analyst", "admin"}},
-    {"endpoint": "ui.crawlers", "label": "Crawler", "roles": {"admin"}},
-    {"endpoint": "ui.admin", "label": "Admin", "roles": {"admin"}},
+    {"endpoint": "ui.overview", "label_key": "nav.overview", "label": "Overview", "roles": {"viewer", "analyst", "admin"}},
+    {"endpoint": "ui.stream", "label_key": "nav.stream", "label": "Stream", "roles": {"viewer", "analyst", "admin"}},
+    {"endpoint": "ui.heatmap", "label_key": "nav.heatmap", "label": "Heatmap", "roles": {"analyst", "admin"}},
+    {"endpoint": "ui.analytics", "label_key": "nav.analytics", "label": "Analytics", "roles": {"analyst", "admin"}},
+    {"endpoint": "ui.graph", "label_key": "nav.graph", "label": "Graph", "roles": {"analyst", "admin"}},
+    {"endpoint": "ui.alerts", "label_key": "nav.alerts", "label": "Alerts", "roles": {"analyst", "admin"}},
+    {"endpoint": "ui.patterns", "label_key": "nav.patterns", "label": "Patterns", "roles": {"analyst", "admin"}},
+    {"endpoint": "ui.crawlers", "label_key": "nav.crawlers", "label": "Crawler", "roles": {"admin"}},
+    {"endpoint": "ui.admin", "label_key": "nav.admin", "label": "Admin", "roles": {"admin"}},
 ]
 
 
@@ -174,6 +175,13 @@ def heatmap():
     return render_template("ui/heatmap.html")
 
 
+@ui_bp.route("/analytics")
+@login_required
+@role_required(PAGE_PERMISSIONS["ui.analytics"])
+def analytics():
+    return render_template("ui/dashboard.html")
+
+
 @ui_bp.route("/graph")
 @login_required
 @role_required(PAGE_PERMISSIONS["ui.graph"])
@@ -275,5 +283,6 @@ def heatmap_stream() -> Response:
 
     headers = {"Cache-Control": "no-cache"}
     return Response(event_stream(), mimetype="text/event-stream", headers=headers)
+
 
 

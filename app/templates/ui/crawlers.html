@@ -1,46 +1,46 @@
-﻿{% extends 'base.html' %}
+{% extends 'base.html' %}
 {% block content %}
 <section class="page-header">
-  <h1>Crawler Control Center</h1>
-  <p>Behalte Worker-Threads, Feed-Gesundheit und neue Quellen im Blick.</p>
+  <h1>{{ _t('crawler.page_title') }}</h1>
+  <p>{{ _t('crawler.page_subtitle') }}</p>
 </section>
 
 <div class="admin-grid">
   <section class="card admin-card" data-crawler-overview>
     <div class="card__header">
       <div>
-        <h2>Gesamtstatus</h2>
-        <p class="lead">Live-Metriken der Crawler-Layer (aktualisiert via SSE).</p>
+        <h2>{{ _t('crawler.status') }}</h2>
+        <p class="lead">{{ _t('crawler.status_lead') }}</p>
       </div>
       <div class="card__actions">
         <label class="inline-control" for="crawler-window">
-          <span>Zeitraum (h)</span>
+          <span>{{ _t('time.window') }}</span>
           <input type="number" id="crawler-window" name="window_hours" value="24" min="1" max="168" data-crawler-window>
         </label>
-        <button type="button" class="button" data-crawler-refresh>Neu laden</button>
+        <button type="button" class="button" data-crawler-refresh>{{ _t('action.reload') }}</button>
       </div>
     </div>
     <p class="status-message" data-crawler-overview-status hidden></p>
     <div class="stat-grid" data-crawler-summary>
       <article class="stat-card">
-        <h3>Quellen</h3>
-        <p class="stat-card__value">–</p>
-        <p class="stat-card__meta">Aktive / Degradierte</p>
+        <h3>{{ _t('crawler.summary.sources') }}</h3>
+        <p class="stat-card__value">-</p>
+        <p class="stat-card__meta">{{ _t('crawler.summary.sources_meta') }}</p>
       </article>
       <article class="stat-card">
-        <h3>Runs (24h)</h3>
-        <p class="stat-card__value">–</p>
-        <p class="stat-card__meta">Fehler &amp; Items</p>
+        <h3>{{ _t('crawler.summary.runs') }}</h3>
+        <p class="stat-card__value">-</p>
+        <p class="stat-card__meta">{{ _t('crawler.summary.runs_meta') }}</p>
       </article>
       <article class="stat-card">
-        <h3>Durchschnittszeit</h3>
-        <p class="stat-card__value">–</p>
-        <p class="stat-card__meta">ms pro Run</p>
+        <h3>{{ _t('crawler.summary.duration') }}</h3>
+        <p class="stat-card__value">-</p>
+        <p class="stat-card__meta">{{ _t('crawler.summary.duration_meta') }}</p>
       </article>
       <article class="stat-card">
-        <h3>Auto-Discovery</h3>
-        <p class="stat-card__value">–</p>
-        <p class="stat-card__meta">Pending Vorschläge</p>
+        <h3>{{ _t('crawler.summary.discovery') }}</h3>
+        <p class="stat-card__value">-</p>
+        <p class="stat-card__meta">{{ _t('crawler.summary.discovery_meta') }}</p>
       </article>
     </div>
   </section>
@@ -48,137 +48,154 @@
   <section class="card admin-card" data-crawler-workers>
     <div class="card__header">
       <div>
-        <h2>Worker &amp; Scheduler</h2>
-        <p class="lead">Steuere Jobs und verfolge Heartbeats.</p>
+        <h2>{{ _t('crawler.worker_title') }}</h2>
+        <p class="lead">{{ _t('crawler.worker_lead') }}</p>
       </div>
       <div class="card__actions">
-        <button type="button" class="button" data-worker-refresh>Aktualisieren</button>
+        <button type="button" class="button" data-worker-refresh>{{ _t('action.reload') }}</button>
       </div>
     </div>
     <p class="status-message" data-worker-status hidden></p>
     <div class="workers-list" data-workers-list>
-      <p class="workers-empty">Noch keine Daten geladen.</p>
+      <p class="workers-empty">{{ _t('analytics.empty') }}</p>
     </div>
   </section>
 
   <section class="card admin-card" data-crawler-feeds>
     <div class="card__header">
       <div>
-        <h2>Feeds &amp; Quellen</h2>
-        <p class="lead">Verwalte RSS/Atom-Quellen, Prioritäten und Health Checks.</p>
+        <h2>{{ _t('crawler.feeds_title') }}</h2>
+        <p class="lead">{{ _t('crawler.feeds_lead') }}</p>
       </div>
       <div class="card__actions">
-        <button type="button" class="button" data-feed-refresh>Liste aktualisieren</button>
+        <button type="button" class="button" data-feed-refresh>{{ _t('action.reload') }}</button>
       </div>
     </div>
     <p class="status-message" data-feed-status hidden></p>
 
-    <form class="filter-grid" data-feed-filter-form>
+    <form class="filter-grid" data-feed-filter-form aria-label="{{ _t('filters.profile.manage_aria') }}">
       <label class="form-control" for="feed-query">
-        <span>Suche</span>
-        <input type="search" id="feed-query" name="query" placeholder="Name oder URL">
+        <span>{{ _t('filters.search') }}</span>
+        <input type="search" id="feed-query" name="query" placeholder="{{ _t('filters.search') }}">
       </label>
       <label class="form-control" for="feed-type">
-        <span>Typ</span>
+        <span>{{ _t('filters.type') }}</span>
         <select id="feed-type" name="type">
-          <option value="">Alle</option>
+          <option value="">{{ _t('filters.all') }}</option>
           <option value="rss">RSS</option>
           <option value="atom">Atom</option>
         </select>
       </label>
       <label class="form-control" for="feed-status">
-        <span>Status</span>
+        <span>{{ _t('filters.status') }}</span>
         <select id="feed-status" name="enabled">
-          <option value="">Alle</option>
-          <option value="true">Aktiv</option>
-          <option value="false">Inaktiv</option>
+          <option value="">{{ _t('filters.all') }}</option>
+          <option value="true">{{ _t('status.active') }}</option>
+          <option value="false">{{ _t('status.inactive') }}</option>
         </select>
       </label>
       <label class="form-control" for="feed-tags">
-        <span>Tags</span>
-        <input type="text" id="feed-tags" name="tags" placeholder="tag1,tag2">
+        <span>{{ _t('filters.tags') }}</span>
+        <input type="text" id="feed-tags" name="tags" placeholder="{{ _t('form.tags') }}">
       </label>
       <label class="inline-control" for="feed-runs">
         <input type="checkbox" id="feed-runs" name="include_runs" value="1">
-        <span>Runs anzeigen</span>
+        <span>{{ _t('filters.include_runs') }}</span>
       </label>
+      <div class="profile-controls" role="group" data-profile-delete-confirm="{{ _t('filters.profile.delete_confirm') }}" data-profile-saved-label="{{ _t('filters.saved_as') }}">
+        <label class="form-control" for="feed-profile-select">
+          <span>{{ _t('filters.profile.heading') }}</span>
+          <select id="feed-profile-select" data-feed-profile-select data-default-label="{{ _t('filters.profile.default') }}">
+            <option value="">{{ _t('filters.profile.default') }}</option>
+          </select>
+        </label>
+        <label class="form-control" for="feed-profile-name">
+          <span>{{ _t('filters.profile.placeholder') }}</span>
+          <input type="text" id="feed-profile-name" data-feed-profile-name placeholder="{{ _t('filters.profile.placeholder') }}">
+        </label>
+        <div class="form-actions">
+          <button type="button" class="button subtle" data-feed-profile-save>{{ _t('filters.profile.save_button') }}</button>
+          <button type="button" class="button subtle" data-feed-profile-update>{{ _t('filters.profile.update') }}</button>
+          <button type="button" class="button subtle" data-feed-profile-delete>{{ _t('filters.profile.delete_all') }}</button>
+        </div>
+      </div>
       <div class="form-actions">
-        <button type="submit" class="button">Filter anwenden</button>
-        <button type="button" class="button" data-feed-filter-reset>Zurücksetzen</button>
+        <button type="submit" class="button">{{ _t('filters.apply') }}</button>
+        <button type="button" class="button" data-feed-filter-reset>{{ _t('filters.reset') }}</button>
       </div>
     </form>
 
     <form class="admin-form" data-feed-create-form>
-      <h3>Neue Quelle hinzufügen</h3>
+      <h3>{{ _t('form.save_source') }}</h3>
       <div class="form-row">
         <label class="form-control" for="feed-name">
-          <span>Name</span>
+          <span>{{ _t('form.name') }}</span>
           <input type="text" id="feed-name" name="name" required>
         </label>
         <label class="form-control" for="feed-type-create">
-          <span>Typ</span>
+          <span>{{ _t('form.type') }}</span>
           <select id="feed-type-create" name="type">
             <option value="rss">RSS</option>
             <option value="atom">Atom</option>
           </select>
         </label>
         <label class="form-control" for="feed-interval">
-          <span>Intervall (Minuten)</span>
+          <span>{{ _t('form.interval') }}</span>
           <input type="number" id="feed-interval" name="interval_minutes" min="1" step="1" value="15">
         </label>
       </div>
       <label class="form-control" for="feed-endpoint">
-        <span>Feed URL</span>
+        <span>{{ _t('form.url') }}</span>
         <input type="url" id="feed-endpoint" name="endpoint" required>
       </label>
       <div class="form-row">
         <label class="form-control" for="feed-priority">
-          <span>Priorität</span>
+          <span>{{ _t('form.priority') }}</span>
           <input type="number" id="feed-priority" name="priority" min="0" step="1" value="0">
         </label>
         <label class="form-control" for="feed-tags-create">
-          <span>Tags (Komma-getrennt)</span>
+          <span>{{ _t('form.tags') }}</span>
           <input type="text" id="feed-tags-create" name="tags" placeholder="news,welt">
         </label>
       </div>
       <label class="form-control" for="feed-notes">
-        <span>Notizen</span>
+        <span>{{ _t('form.notes') }}</span>
         <textarea id="feed-notes" name="notes" rows="2"></textarea>
       </label>
       <div class="form-actions">
         <label class="inline-control" for="feed-enabled">
           <input type="checkbox" id="feed-enabled" name="enabled" checked>
-          <span>Quelle aktivieren</span>
+          <span>{{ _t('form.enable_source') }}</span>
         </label>
-        <button type="submit" class="button primary">Quelle speichern</button>
+        <button type="submit" class="button primary">{{ _t('form.save_source') }}</button>
       </div>
     </form>
 
     <form class="bulk-form" data-feed-bulk-form>
-      <h3>Bulk-Aktionen</h3>
+      <h3>{{ _t('bulk.title') }}</h3>
       <div class="form-row">
         <label class="form-control" for="bulk-action">
-          <span>Aktion</span>
+          <span>{{ _t('form.action') }}</span>
           <select id="bulk-action" name="action" required>
-            <option value="">Bitte wählen</option>
-            <option value="enable">Aktivieren</option>
-            <option value="disable">Deaktivieren</option>
-            <option value="set_priority">Priorität setzen</option>
-            <option value="set_tags">Tags setzen</option>
-            <option value="set_notes">Notiz setzen</option>
-            <option value="delete">Löschen</option>
+            <option value="">{{ _t('filters.all') }}</option>
+            <option value="enable">{{ _t('bulk.enable') }}</option>
+            <option value="disable">{{ _t('bulk.disable') }}</option>
+            <option value="set_priority">{{ _t('bulk.set_priority') }}</option>
+            <option value="set_tags">{{ _t('bulk.set_tags') }}</option>
+            <option value="set_notes">{{ _t('bulk.set_notes') }}</option>
+            <option value="delete">{{ _t('bulk.delete') }}</option>
           </select>
         </label>
         <label class="form-control" for="bulk-value">
-          <span>Wert</span>
+          <span>{{ _t('form.value') }}</span>
           <input type="text" id="bulk-value" name="value" placeholder="z.B. 5 oder tag1,tag2">
         </label>
       </div>
-      <button type="submit" class="button subtle">Anwenden</button>
+      <button type="submit" class="button subtle">{{ _t('action.apply') }}</button>
     </form>
 
     <div class="sources-list" data-feed-list>
-      <p class="sources-empty">Keine Quellen gefunden.</p>
+      <p class="sources-empty">{{ _t('filters.no_results') }}</p>
     </div>
   </section>
 </div>

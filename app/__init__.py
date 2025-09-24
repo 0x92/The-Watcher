@@ -85,7 +85,7 @@ def create_app() -> Flask:
             "navigation_items": accessible_items,
         }
 
-    @app.before_request
+        @app.before_request\n    def _set_locale() -> None:\n        preferred = request.args.get("lang") or request.headers.get("X-Locale")\n        if not preferred and request.accept_languages:\n            preferred = request.accept_languages.best_match(["de", "en"])\n        if preferred:\n            set_locale(preferred.lower())\n        else:\n            set_locale("de")\n\n    @app.before_request
     def _start_timer() -> None:  # pragma: no cover - request timing
         g.start_time = time.perf_counter()
 
@@ -119,5 +119,6 @@ def create_app() -> Flask:
         return "ok", 200
 
     return app
+
 
 

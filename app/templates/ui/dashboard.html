@@ -1,62 +1,83 @@
 ﻿{% extends 'base.html' %}
 {% block content %}
 <section class="page-header">
-  <h1>Gematria Analytics Dashboard</h1>
-  <p>Verdichte Headlines nach Gematria-Schemen, erkenne Trends und priorisiere auffällige Quellen.</p>
+  <h1>{{ _t('analytics.page_title') }}</h1>
+  <p>{{ _t('analytics.page_subtitle') }}</p>
 </section>
 
 <div class="analytics-grid" data-analytics-root>
-  <section class="card analytics-card">
+  <section class="card analytics-card" data-analytics-filters>
     <header class="card__header">
       <div>
-        <h2>Auswahl</h2>
-        <p class="lead">Wähle Zeitraum, Cipher und Ranking.</p>
-      </div>
-      <div class="card__actions analytics-controls">
-        <label class="form-control">
-          <span>Zeitraum</span>
-          <select data-analytics-window>
-            <option value="24">24h</option>
-            <option value="48">48h</option>
-            <option value="168">7 Tage</option>
-          </select>
-        </label>
-        <label class="form-control">
-          <span>Cipher</span>
-          <select data-analytics-scheme></select>
-        </label>
-        <label class="form-control">
-          <span>Ranking</span>
-          <select data-analytics-ranking>
-            <option value="top">Top Werte</option>
-            <option value="sources">Quellen</option>
-            <option value="trend">Trend</option>
-          </select>
-        </label>
-        <button type="button" class="button" data-analytics-refresh>Aktualisieren</button>
+        <h2>{{ _t('analytics.selection') }}</h2>
+        <p class="lead">{{ _t('analytics.selection_lead') }}</p>
       </div>
     </header>
-    <p class="status-message" data-analytics-status hidden></p>
+    <form class="filter-grid" data-analytics-filter-form aria-label="{{ _t('filters.profile.manage_aria') }}">
+      <label class="form-control" for="analytics-window">
+        <span>{{ _t('analytics.window') }}</span>
+        <select id="analytics-window" data-analytics-window>
+          <option value="24">24h</option>
+          <option value="48">48h</option>
+          <option value="168">7d</option>
+        </select>
+      </label>
+      <label class="form-control" for="analytics-scheme">
+        <span>{{ _t('analytics.cipher') }}</span>
+        <select id="analytics-scheme" data-analytics-scheme></select>
+      </label>
+      <label class="form-control" for="analytics-ranking">
+        <span>{{ _t('analytics.ranking') }}</span>
+        <select id="analytics-ranking" data-analytics-ranking>
+          <option value="top">{{ _t('analytics.rank.top') }}</option>
+          <option value="sources">{{ _t('analytics.rank.sources') }}</option>
+          <option value="trend">{{ _t('analytics.rank.trend') }}</option>
+        </select>
+      </label>
+      <div class="profile-controls" role="group" data-analytics-profile-controls data-profile-delete-confirm="{{ _t('filters.profile.delete_confirm') }}" data-profile-saved-label="{{ _t('filters.saved_as') }}">
+        <label class="form-control" for="analytics-profile-select">
+          <span>{{ _t('filters.profile.heading') }}</span>
+          <select id="analytics-profile-select" data-analytics-profile-select data-default-label="{{ _t('filters.profile.default') }}">
+            <option value="">{{ _t('filters.profile.default') }}</option>
+          </select>
+        </label>
+        <label class="form-control" for="analytics-profile-name">
+          <span>{{ _t('filters.profile.placeholder') }}</span>
+          <input type="text" id="analytics-profile-name" data-analytics-profile-name placeholder="{{ _t('filters.profile.placeholder') }}">
+        </label>
+        <div class="form-actions">
+          <button type="button" class="button subtle" data-analytics-profile-save>{{ _t('filters.profile.save_button') }}</button>
+          <button type="button" class="button subtle" data-analytics-profile-update>{{ _t('filters.profile.update') }}</button>
+          <button type="button" class="button subtle" data-analytics-profile-delete>{{ _t('filters.profile.delete_all') }}</button>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="button" data-analytics-apply>{{ _t('filters.apply') }}</button>
+        <button type="button" class="button" data-analytics-filter-reset>{{ _t('filters.reset') }}</button>
+        <button type="button" class="button" data-analytics-refresh>{{ _t('analytics.refresh') }}</button>
+      </div>
+    </form>
+    <p class="status-message" data-analytics-status hidden data-label-loading="{{ _t('analytics.status_loading') }}" data-label-success="{{ _t('analytics.status_success') }}" data-label-error="{{ _t('analytics.status_error') }}"></p>
     <div class="stat-grid" data-analytics-summary>
       <article class="stat-card" data-analytic-card="total">
-        <h3>Items</h3>
+        <h3>{{ _t('analytics.items') }}</h3>
         <p class="stat-card__value">-</p>
-        <p class="stat-card__meta">Summe / Durchschnitt</p>
+        <p class="stat-card__meta">{{ _t('analytics.summary_meta') }}</p>
       </article>
       <article class="stat-card" data-analytic-card="extrema">
-        <h3>Min &amp; Max</h3>
+        <h3>{{ _t('analytics.extrema') }}</h3>
         <p class="stat-card__value">-</p>
-        <p class="stat-card__meta">Median / P90 / P99</p>
+        <p class="stat-card__meta">{{ _t('analytics.extrema_meta') }}</p>
       </article>
       <article class="stat-card" data-analytic-card="sources">
-        <h3>Quellen</h3>
+        <h3>{{ _t('analytics.sources_heading') }}</h3>
         <p class="stat-card__value">-</p>
-        <p class="stat-card__meta">Top &amp; Verteilung</p>
+        <p class="stat-card__meta">{{ _t('analytics.sources_meta') }}</p>
       </article>
       <article class="stat-card" data-analytic-card="correlation">
-        <h3>Korrelation</h3>
+        <h3>{{ _t('analytics.correlation') }}</h3>
         <p class="stat-card__value">-</p>
-        <p class="stat-card__meta">Priority / Titellänge</p>
+        <p class="stat-card__meta">{{ _t('analytics.correlation_meta') }}</p>
       </article>
     </div>
   </section>
@@ -64,33 +85,33 @@
   <section class="card analytics-card" data-analytics-top>
     <header class="card__header">
       <div>
-        <h2>Top Gematria Werte</h2>
-        <p class="lead">Häufigste Werte inklusive Beispieltiteln.</p>
+        <h2>{{ _t('analytics.top_values') }}</h2>
+        <p class="lead">{{ _t('analytics.top_values_lead') }}</p>
       </div>
     </header>
-    <ul class="insight-list" data-analytics-top-list>
-      <li class="placeholder">Noch keine Daten vorhanden.</li>
+    <ul class="insight-list" data-analytics-top-list data-empty-label="{{ _t('analytics.empty') }}">
+      <li class="placeholder">{{ _t('analytics.empty') }}</li>
     </ul>
   </section>
 
   <section class="card analytics-card" data-analytics-sources>
     <header class="card__header">
       <div>
-        <h2>Quellenanalyse</h2>
-        <p class="lead">Vergleiche Trefferhäufigkeit und Durchschnittswerte.</p>
+        <h2>{{ _t('analytics.sources') }}</h2>
+        <p class="lead">{{ _t('analytics.sources_lead') }}</p>
       </div>
     </header>
-    <table class="analytics-table" data-analytics-source-table>
+    <table class="analytics-table" data-analytics-source-table data-empty-label="{{ _t('analytics.empty') }}">
       <thead>
         <tr>
-          <th>Quelle</th>
-          <th>Items</th>
-          <th>Ø Wert</th>
-          <th>Priorität</th>
+          <th scope="col">{{ _t('form.name') }}</th>
+          <th scope="col">{{ _t('analytics.items') }}</th>
+          <th scope="col">{{ _t('analytics.average_value') }}</th>
+          <th scope="col">{{ _t('form.priority') }}</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="placeholder"><td colspan="4">Noch keine Daten vorhanden.</td></tr>
+        <tr class="placeholder"><td colspan="4">{{ _t('analytics.empty') }}</td></tr>
       </tbody>
     </table>
   </section>
@@ -98,12 +119,12 @@
   <section class="card analytics-card" data-analytics-trend>
     <header class="card__header">
       <div>
-        <h2>Trendlinien</h2>
-        <p class="lead">Zeitliche Entwicklung der Werte.</p>
+        <h2>{{ _t('analytics.trend') }}</h2>
+        <p class="lead">{{ _t('analytics.trend_lead') }}</p>
       </div>
     </header>
-    <ul class="insight-list" data-analytics-trend-list>
-      <li class="placeholder">Noch keine Daten vorhanden.</li>
+    <ul class="insight-list" data-analytics-trend-list data-empty-label="{{ _t('analytics.chart_empty') }}">
+      <li class="placeholder">{{ _t('analytics.chart_empty') }}</li>
     </ul>
   </section>
 </div>

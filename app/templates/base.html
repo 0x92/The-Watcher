@@ -1,9 +1,9 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="de">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>The Watcher</title>
+    <title>{{ _t('app.brand') }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='dist/assets/style.css') }}">
     <script type="module" defer src="{{ url_for('static', filename='dist/main.js') }}"></script>
   </head>
@@ -12,25 +12,25 @@
       <div class="nav-wrapper">
         <a class="brand" href="{{ url_for('ui.overview') }}">
           <span class="brand-icon" aria-hidden="true">W</span>
-          <span>The Watcher</span>
+          <span>{{ _t('app.brand') }}</span>
         </a>
-        <nav class="primary-nav" aria-label="Hauptnavigation">
+        <nav class="primary-nav" aria-label="{{ _t('nav.main') }}">
           {% for item in navigation_items %}
-            <a href="{{ url_for(item.endpoint) }}" {% if request.endpoint == item.endpoint %}aria-current="page"{% endif %}>{{ item.label }}</a>
+            <a href="{{ url_for(item.endpoint) }}" {% if request.endpoint == item.endpoint %}aria-current="page"{% endif %}>{{ _t(item['label_key']) }}</a>
           {% endfor %}
         </nav>
         <div class="user-actions">
           {% if current_user.is_authenticated %}
-            <span class="user-label">{{ current_user.email }} · {{ current_user.role|capitalize }}</span>
+            <span class="user-label">{{ current_user.email }} Â· {{ current_user.role|capitalize }}</span>
             <form method="post" action="{{ url_for('auth.logout') }}" class="logout-form">
-              <button type="submit" class="button-secondary">Logout</button>
+              <button type="submit" class="button-secondary">{{ _t('logout.label') }}</button>
             </form>
           {% else %}
-            <a class="button-primary" href="{{ url_for('auth.login', next=request.url) }}">Login</a>
+            <a class="button-primary" href="{{ url_for('auth.login', next=request.url) }}">{{ _t('login.title') }}</a>
           {% endif %}
         </div>
         <button class="theme-toggle" type="button" data-theme-toggle aria-pressed="false">
-          <span aria-hidden="true">🌗</span>
+          <span aria-hidden="true">ðŸŒ—</span>
           <span data-role="label">Light</span>
         </button>
       </div>
@@ -40,3 +40,4 @@
     </main>
   </body>
 </html>
+
