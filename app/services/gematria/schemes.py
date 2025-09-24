@@ -21,8 +21,8 @@ def _alphabet_mapping(values: Iterable[int]) -> Dict[str, int]:
 
 
 SCHEME_DEFINITIONS: Dict[str, SchemeDefinition] = {
-    "english_sumerian": SchemeDefinition(
-        key="english_sumerian",
+    "sumerian": SchemeDefinition(
+        key="sumerian",
         label="English (6er-Schritte)",
         description="Multiplikation der Ordinalwerte mit 6 (A=6, Z=156).",
         mapping=_alphabet_mapping([6 * (i + 1) for i in range(26)]),
@@ -85,6 +85,9 @@ SCHEME_DEFINITIONS: Dict[str, SchemeDefinition] = {
 
 
 SCHEMES: Dict[str, Dict[str, int]] = {key: definition.mapping for key, definition in SCHEME_DEFINITIONS.items()}
+
+# Backwards compatibility: allow the former ``english_sumerian`` identifier.
+SCHEMES["english_sumerian"] = SCHEMES["sumerian"]
 
 
 DEFAULT_ENABLED_SCHEMES: Tuple[str, ...] = tuple(SCHEME_DEFINITIONS.keys())

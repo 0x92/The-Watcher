@@ -135,8 +135,8 @@ def _sanitize_scheme_list(values: Iterable[Any]) -> List[str]:
 
     available = {name.lower(): name for name in SCHEMES.keys()}
     aliases = {
-        "sumerian": "english_sumerian",
-        "english sumerian": "english_sumerian",
+        "english_sumerian": "sumerian",
+        "english sumerian": "sumerian",
     }
     available.update(aliases)
     sanitized: List[str] = []
