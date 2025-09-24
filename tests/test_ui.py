@@ -33,6 +33,7 @@ def test_ui_routes_for_admin():
         ("/alerts", "Alerts"),
         ("/patterns", "Patterns"),
         ("/admin", "Administration"),
+        ("/crawlers", "Crawler Control Center"),
     ]
     for route, text in routes:
         resp = client.get(route)
@@ -52,6 +53,7 @@ def test_role_based_access_control():
     assert client.get("/alerts").status_code == 403
     assert client.get("/patterns").status_code == 403
     assert client.get("/admin").status_code == 403
+    assert client.get("/crawlers").status_code == 403
 
     client.post("/auth/logout", json={})
 
@@ -63,6 +65,7 @@ def test_role_based_access_control():
     assert client.get("/alerts").status_code == 200
     assert client.get("/patterns").status_code == 200
     assert client.get("/admin").status_code == 403
+    assert client.get("/crawlers").status_code == 403
 
 
 def test_stream_live_rejects_invalid_parameters():

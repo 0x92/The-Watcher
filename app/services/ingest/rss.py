@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from email.utils import format_datetime, parsedate_to_datetime
 from pathlib import Path
@@ -27,6 +27,19 @@ class FeedEntry:
     url: str
     published_at: Optional[datetime]
     dedupe_hash: str
+
+
+@dataclass
+class FeedFetchResult:
+    entries: List[FeedEntry]
+    etag: str | None = None
+    modified: datetime | None = None
+    discovered_feeds: List[str] = field(default_factory=list)
+
+    def __iter__(self):
+        yield self.entries
+        yield self.etag
+        yield self.modified
 
 
 def _fallback_parse(url: str) -> List[FeedEntry]:
@@ -115,7 +128,7 @@ def _fetch_with_requests(
         response = requests.get(url, headers=headers, timeout=10)
     except requests.RequestException as exc:  # pragma: no cover - network specific
         LOGGER.warning("HTTP fetch for %s failed: %s", url, exc)
-        return [], None, None
+        return FeedFetchResult(entries=[])
 
     if response.status_code == 304:
         return [], etag, modified
@@ -124,7 +137,7 @@ def _fetch_with_requests(
         LOGGER.warning(
             "Feed %s returned HTTP %s – falling back to bundled sample", url, response.status_code
         )
-        return [], None, None
+        return FeedFetchResult(entries=[])
 
     parsed = feedparser.parse(response.content)
     entries = _normalize_entries(getattr(parsed, "entries", None))
@@ -180,8 +193,8 @@ def fetch(
 
     Returns
     -------
-    entries, etag, modified
-        Parsed entries and potential caching headers for subsequent calls.
+    FeedFetchResult
+        Structured result containing feed entries and optional cache metadata.
     """
     request_headers = {"User-Agent": _USER_AGENT, "Accept": "application/rss+xml"}
     parsed = feedparser.parse(
@@ -196,25 +209,25 @@ def fetch(
         etag_new = getattr(parsed, "get", lambda *_a, **_k: None)("etag")
         modified_struct = getattr(parsed, "get", lambda *_a, **_k: None)("modified_parsed")
         modified_dt = _struct_time_to_datetime(modified_struct)
-        return entries, etag_new, modified_dt
+        return FeedFetchResult(entries=entries, etag=etag_new, modified=modified_dt)
 
     if _is_http_url(url):
         http_entries, http_etag, http_modified = _fetch_with_requests(
             url, etag=etag, modified=modified
         )
         if http_entries:
-            return http_entries, http_etag, http_modified
+            return FeedFetchResult(entries=http_entries, etag=http_etag, modified=http_modified)
 
     fallback_entries = _fallback_parse(url)
     if fallback_entries:
-        return fallback_entries, None, None
+        return FeedFetchResult(entries=fallback_entries)
 
     if _is_http_url(url):
         sample_entries = _load_sample_entries(url)
         if sample_entries:
-            return sample_entries, None, None
+            return FeedFetchResult(entries=sample_entries)
 
-    return [], None, None
+    return FeedFetchResult(entries=[])
 
 
-__all__ = ["FeedEntry", "fetch"]
+__all__ = ["FeedEntry", "FeedFetchResult", "fetch"]

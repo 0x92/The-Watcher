@@ -1,0 +1,185 @@
+﻿{% extends 'base.html' %}
+{% block content %}
+<section class="page-header">
+  <h1>Crawler Control Center</h1>
+  <p>Behalte Worker-Threads, Feed-Gesundheit und neue Quellen im Blick.</p>
+</section>
+
+<div class="admin-grid">
+  <section class="card admin-card" data-crawler-overview>
+    <div class="card__header">
+      <div>
+        <h2>Gesamtstatus</h2>
+        <p class="lead">Live-Metriken der Crawler-Layer (aktualisiert via SSE).</p>
+      </div>
+      <div class="card__actions">
+        <label class="inline-control" for="crawler-window">
+          <span>Zeitraum (h)</span>
+          <input type="number" id="crawler-window" name="window_hours" value="24" min="1" max="168" data-crawler-window>
+        </label>
+        <button type="button" class="button" data-crawler-refresh>Neu laden</button>
+      </div>
+    </div>
+    <p class="status-message" data-crawler-overview-status hidden></p>
+    <div class="stat-grid" data-crawler-summary>
+      <article class="stat-card">
+        <h3>Quellen</h3>
+        <p class="stat-card__value">–</p>
+        <p class="stat-card__meta">Aktive / Degradierte</p>
+      </article>
+      <article class="stat-card">
+        <h3>Runs (24h)</h3>
+        <p class="stat-card__value">–</p>
+        <p class="stat-card__meta">Fehler &amp; Items</p>
+      </article>
+      <article class="stat-card">
+        <h3>Durchschnittszeit</h3>
+        <p class="stat-card__value">–</p>
+        <p class="stat-card__meta">ms pro Run</p>
+      </article>
+      <article class="stat-card">
+        <h3>Auto-Discovery</h3>
+        <p class="stat-card__value">–</p>
+        <p class="stat-card__meta">Pending Vorschläge</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="card admin-card" data-crawler-workers>
+    <div class="card__header">
+      <div>
+        <h2>Worker &amp; Scheduler</h2>
+        <p class="lead">Steuere Jobs und verfolge Heartbeats.</p>
+      </div>
+      <div class="card__actions">
+        <button type="button" class="button" data-worker-refresh>Aktualisieren</button>
+      </div>
+    </div>
+    <p class="status-message" data-worker-status hidden></p>
+    <div class="workers-list" data-workers-list>
+      <p class="workers-empty">Noch keine Daten geladen.</p>
+    </div>
+  </section>
+
+  <section class="card admin-card" data-crawler-feeds>
+    <div class="card__header">
+      <div>
+        <h2>Feeds &amp; Quellen</h2>
+        <p class="lead">Verwalte RSS/Atom-Quellen, Prioritäten und Health Checks.</p>
+      </div>
+      <div class="card__actions">
+        <button type="button" class="button" data-feed-refresh>Liste aktualisieren</button>
+      </div>
+    </div>
+    <p class="status-message" data-feed-status hidden></p>
+
+    <form class="filter-grid" data-feed-filter-form>
+      <label class="form-control" for="feed-query">
+        <span>Suche</span>
+        <input type="search" id="feed-query" name="query" placeholder="Name oder URL">
+      </label>
+      <label class="form-control" for="feed-type">
+        <span>Typ</span>
+        <select id="feed-type" name="type">
+          <option value="">Alle</option>
+          <option value="rss">RSS</option>
+          <option value="atom">Atom</option>
+        </select>
+      </label>
+      <label class="form-control" for="feed-status">
+        <span>Status</span>
+        <select id="feed-status" name="enabled">
+          <option value="">Alle</option>
+          <option value="true">Aktiv</option>
+          <option value="false">Inaktiv</option>
+        </select>
+      </label>
+      <label class="form-control" for="feed-tags">
+        <span>Tags</span>
+        <input type="text" id="feed-tags" name="tags" placeholder="tag1,tag2">
+      </label>
+      <label class="inline-control" for="feed-runs">
+        <input type="checkbox" id="feed-runs" name="include_runs" value="1">
+        <span>Runs anzeigen</span>
+      </label>
+      <div class="form-actions">
+        <button type="submit" class="button">Filter anwenden</button>
+        <button type="button" class="button" data-feed-filter-reset>Zurücksetzen</button>
+      </div>
+    </form>
+
+    <form class="admin-form" data-feed-create-form>
+      <h3>Neue Quelle hinzufügen</h3>
+      <div class="form-row">
+        <label class="form-control" for="feed-name">
+          <span>Name</span>
+          <input type="text" id="feed-name" name="name" required>
+        </label>
+        <label class="form-control" for="feed-type-create">
+          <span>Typ</span>
+          <select id="feed-type-create" name="type">
+            <option value="rss">RSS</option>
+            <option value="atom">Atom</option>
+          </select>
+        </label>
+        <label class="form-control" for="feed-interval">
+          <span>Intervall (Minuten)</span>
+          <input type="number" id="feed-interval" name="interval_minutes" min="1" step="1" value="15">
+        </label>
+      </div>
+      <label class="form-control" for="feed-endpoint">
+        <span>Feed URL</span>
+        <input type="url" id="feed-endpoint" name="endpoint" required>
+      </label>
+      <div class="form-row">
+        <label class="form-control" for="feed-priority">
+          <span>Priorität</span>
+          <input type="number" id="feed-priority" name="priority" min="0" step="1" value="0">
+        </label>
+        <label class="form-control" for="feed-tags-create">
+          <span>Tags (Komma-getrennt)</span>
+          <input type="text" id="feed-tags-create" name="tags" placeholder="news,welt">
+        </label>
+      </div>
+      <label class="form-control" for="feed-notes">
+        <span>Notizen</span>
+        <textarea id="feed-notes" name="notes" rows="2"></textarea>
+      </label>
+      <div class="form-actions">
+        <label class="inline-control" for="feed-enabled">
+          <input type="checkbox" id="feed-enabled" name="enabled" checked>
+          <span>Quelle aktivieren</span>
+        </label>
+        <button type="submit" class="button primary">Quelle speichern</button>
+      </div>
+    </form>
+
+    <form class="bulk-form" data-feed-bulk-form>
+      <h3>Bulk-Aktionen</h3>
+      <div class="form-row">
+        <label class="form-control" for="bulk-action">
+          <span>Aktion</span>
+          <select id="bulk-action" name="action" required>
+            <option value="">Bitte wählen</option>
+            <option value="enable">Aktivieren</option>
+            <option value="disable">Deaktivieren</option>
+            <option value="set_priority">Priorität setzen</option>
+            <option value="set_tags">Tags setzen</option>
+            <option value="set_notes">Notiz setzen</option>
+            <option value="delete">Löschen</option>
+          </select>
+        </label>
+        <label class="form-control" for="bulk-value">
+          <span>Wert</span>
+          <input type="text" id="bulk-value" name="value" placeholder="z.B. 5 oder tag1,tag2">
+        </label>
+      </div>
+      <button type="submit" class="button subtle">Anwenden</button>
+    </form>
+
+    <div class="sources-list" data-feed-list>
+      <p class="sources-empty">Keine Quellen gefunden.</p>
+    </div>
+  </section>
+</div>
+{% endblock %}

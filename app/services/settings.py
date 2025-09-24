@@ -105,6 +105,11 @@ def _sanitize_scheme_list(values: Iterable[Any]) -> List[str]:
     """Ensure only known scheme identifiers are returned."""
 
     available = {name.lower(): name for name in SCHEMES.keys()}
+    aliases = {
+        "sumerian": "english_sumerian",
+        "english sumerian": "english_sumerian",
+    }
+    available.update(aliases)
     sanitized: List[str] = []
     seen = set()
     for value in values:

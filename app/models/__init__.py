@@ -42,6 +42,9 @@ class Source(Base):
     last_checked_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     auto_discovered: Mapped[bool] = mapped_column(Boolean, default=False)
     discovered_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    priority: Mapped[int] = mapped_column(Integer, default=0)
+    tags_json: Mapped[Optional[list[str]]] = mapped_column(JSON, nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     items: Mapped[List["Item"]] = relationship("Item", back_populates="source")

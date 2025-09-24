@@ -41,3 +41,20 @@ if "feedparser" not in sys.modules:
 
 
 
+
+if "sentence_transformers" not in sys.modules:
+    class _SentenceTransformerStub:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def encode(self, texts, normalize_embeddings=True):
+            return [[0.0 for _ in range(16)] for _ in texts]
+
+    sys.modules["sentence_transformers"] = types.SimpleNamespace(
+        SentenceTransformer=_SentenceTransformerStub
+    )
+
+if "sklearn" not in sys.modules:
+    sys.modules["sklearn"] = types.SimpleNamespace(
+        cluster=types.SimpleNamespace(MiniBatchKMeans=None)
+    )

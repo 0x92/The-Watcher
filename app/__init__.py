@@ -10,7 +10,7 @@ from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_
 from app.logging import configure_logging
 
 from app.blueprints.admin import admin_bp
-from app.blueprints.api import admin_api_bp, api_bp
+from app.blueprints.api import admin_api_bp, api_bp, crawlers_api_bp
 from app.blueprints.auth import auth_bp
 from app.blueprints.ui import ui_bp
 from app.extensions import csrf, limiter, login_manager
@@ -55,6 +55,7 @@ def create_app() -> Flask:
         return get_user_by_id(user_id)
 
     app.register_blueprint(api_bp, url_prefix="/api")
+    app.register_blueprint(crawlers_api_bp, url_prefix="/api/crawlers")
     app.register_blueprint(admin_api_bp, url_prefix="/api/admin")
     app.register_blueprint(ui_bp)
     app.register_blueprint(auth_bp, url_prefix="/auth")
@@ -62,6 +63,7 @@ def create_app() -> Flask:
 
     limiter.limit("10/minute")(api_bp)
     limiter.limit("10/minute")(admin_api_bp)
+    limiter.limit("10/minute")(crawlers_api_bp)
 
     from app.blueprints.ui import NAV_ITEMS, PAGE_PERMISSIONS
 

@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import os
-from collections import Counter
-from datetime import datetime
 from typing import Any, Dict
 
 from flask import Blueprint, current_app, jsonify, request
@@ -12,9 +10,17 @@ from sqlalchemy.exc import IntegrityError
 
 from app.db import get_session
 from app.extensions import csrf
-from app.models import Item, Source
+from app.models import Source
 from app.security import role_required
 from app.services.gematria import list_available_schemes
+from app.services.crawlers import (
+    coerce_bool as crawler_coerce_bool,
+    coerce_int as crawler_coerce_int,
+    create_source as crawler_create_source,
+    list_sources as crawler_list_sources,
+    serialize_source as crawler_serialize_source,
+    update_source as crawler_update_source,
+)
 from app.services.settings import (
     DEFAULT_GEMATRIA_SETTINGS,
     get_gematria_settings,
@@ -46,72 +52,35 @@ def _database_url() -> str | None:
     return env_url
 
 
-def _coerce_bool(value: Any, default: bool = True) -> bool:
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, str):
-        lowered = value.lower()
-        if lowered in {"true", "1", "yes", "on"}:
-            return True
-        if lowered in {"false", "0", "no", "off"}:
-            return False
-    if isinstance(value, (int, float)):
-        return bool(value)
-    return default
+_coerce_bool = crawler_coerce_bool
 
+_coerce_int = crawler_coerce_int
 
-def _coerce_int(value: Any, default: int, *, minimum: int = 0) -> int:
-    try:
-        integer = int(value)
-    except (TypeError, ValueError):
-        return default
-    return max(minimum, integer)
-
-
-def _serialize_source(source: Source, stats: Dict[str, Any] | None = None) -> Dict[str, Any]:
-    stats = stats or {}
-
-    def _iso(value: Any) -> str | None:
-        return value.isoformat() if isinstance(value, datetime) else None
-
-    latest = stats.get("latest_item") or {}
-
-    return {
-        "id": source.id,
-        "name": source.name,
-        "type": source.type,
-        "endpoint": source.endpoint,
-        "enabled": bool(source.enabled),
-        "interval_minutes": int((source.interval_sec or 0) / 60),
-        "last_run_at": source.last_run_at.isoformat() if source.last_run_at else None,
-        "created_at": source.created_at.isoformat() if isinstance(source.created_at, datetime) else None,
-        "auth": source.auth_json or {},
-        "filters": source.filters_json or {},
-        "stats": {
-            "total_items": int(stats.get("total_items", 0) or 0),
-            "last_published_at": _iso(stats.get("last_published_at")),
-            "last_fetched_at": _iso(stats.get("last_fetched_at")),
-            "latest_item": {
-                "title": latest.get("title"),
-                "url": latest.get("url"),
-                "published_at": _iso(latest.get("published_at")),
-                "fetched_at": _iso(latest.get("fetched_at")),
-            },
-        },
-    }
-
+_serialize_source = crawler_serialize_source
 
 def _open_session():
     return get_session(_database_url())
 
 
+DISPLAY_SCHEME_ALIASES = {
+    "english_sumerian": "sumerian",
+}
+
+
+def _display_scheme(key: str) -> str:
+    return DISPLAY_SCHEME_ALIASES.get(key, key)
+
+
 def _serialize_gematria_settings(settings: Dict[str, Any]) -> Dict[str, Any]:
+    enabled_values = settings.get("enabled_schemes", [])
+    enabled_display = [_display_scheme(value) for value in enabled_values]
+    defaults_display = [_display_scheme(value) for value in DEFAULT_GEMATRIA_SETTINGS.enabled_schemes]
     return {
-        "enabled": settings.get("enabled_schemes", []),
+        "enabled": enabled_display,
         "ignore_pattern": settings.get("ignore_pattern"),
         "available": list_available_schemes(),
         "defaults": {
-            "enabled": list(DEFAULT_GEMATRIA_SETTINGS.enabled_schemes),
+            "enabled": list(defaults_display),
             "ignore_pattern": DEFAULT_GEMATRIA_SETTINGS.ignore_pattern,
         },
     }
@@ -205,116 +174,43 @@ def control_worker_endpoint(worker_name: str):
 def list_sources_endpoint():
     session = _open_session()
     try:
-        stmt = select(Source).order_by(Source.name.asc())
-
-        search = (request.args.get("q") or "").strip()
-        if search:
-            pattern = f"%{search.lower()}%"
-            stmt = stmt.where(
-                or_(
-                    func.lower(Source.name).like(pattern),
-                    func.lower(Source.endpoint).like(pattern),
-                    func.lower(Source.type).like(pattern),
-                )
-            )
+        search_param = (request.args.get("q") or request.args.get("query") or "").strip()
+        search = search_param or None
 
         type_param = request.args.get("type") or request.args.get("types")
         type_values = [segment.strip() for segment in (type_param or "").split(",") if segment.strip()]
-        if type_values:
-            stmt = stmt.where(Source.type.in_(type_values))
 
         enabled_param = request.args.get("enabled")
-        enabled_filter: bool | None = None
+        enabled_filter = None
         if enabled_param not in (None, ""):
             enabled_filter = _coerce_bool(enabled_param, True)
-            stmt = stmt.where(Source.enabled.is_(True if enabled_filter else False))
 
-        sources = session.scalars(stmt).all()
-        source_ids = [source.id for source in sources]
+        tags_param = request.args.get("tags")
+        tag_values = [segment.strip() for segment in (tags_param or "").split(",") if segment.strip()]
 
-        stats_map: Dict[int, Dict[str, Any]] = {
-            source.id: {
-                "total_items": 0,
-                "last_published_at": None,
-                "last_fetched_at": None,
-            }
-            for source in sources
-        }
+        include_runs_param = request.args.get("include_runs")
+        include_runs_flag = False
+        if include_runs_param not in (None, ""):
+            include_runs_flag = _coerce_bool(include_runs_param, False)
 
-        if source_ids:
-            metrics_stmt = (
-                select(
-                    Item.source_id,
-                    func.count(Item.id),
-                    func.max(Item.published_at),
-                    func.max(Item.fetched_at),
-                )
-                .where(Item.source_id.in_(source_ids))
-                .group_by(Item.source_id)
-            )
-            for source_id, total_items, last_published, last_fetched in session.execute(metrics_stmt):
-                stats_map[source_id]["total_items"] = int(total_items or 0)
-                stats_map[source_id]["last_published_at"] = last_published
-                stats_map[source_id]["last_fetched_at"] = last_fetched
+        serialized, meta, filters_payload = crawler_list_sources(
+            session,
+            search=search,
+            types=type_values,
+            enabled=enabled_filter,
+            tags=tag_values,
+            include_runs=include_runs_flag,
+        )
 
-            latest_stmt = (
-                select(
-                    Item.source_id,
-                    Item.title,
-                    Item.url,
-                    Item.published_at,
-                    Item.fetched_at,
-                )
-                .where(Item.source_id.in_(source_ids))
-                .order_by(
-                    Item.source_id.asc(),
-                    Item.published_at.desc().nulls_last(),
-                    Item.fetched_at.desc().nulls_last(),
-                    Item.id.desc(),
-                )
-            )
-            seen: set[int] = set()
-            for source_id, title, url, published_at, fetched_at in session.execute(latest_stmt):
-                if source_id in seen:
-                    continue
-                stats_map[source_id]["latest_item"] = {
-                    "title": title,
-                    "url": url,
-                    "published_at": published_at,
-                    "fetched_at": fetched_at,
-                }
-                seen.add(source_id)
-                if len(seen) == len(source_ids):
-                    break
+        total_sources_all = session.scalar(select(func.count(Source.id))) or 0
+        meta.setdefault("total_sources_all", int(total_sources_all))
 
-        serialized = [_serialize_source(src, stats_map.get(src.id)) for src in sources]
-
-        type_counter = Counter(source.type for source in sources)
-        active_sources = sum(1 for source in sources if source.enabled)
-        total_items = sum(entry.get("total_items", 0) for entry in stats_map.values())
-        last_run_at = None
-        for source in sources:
-            if source.last_run_at and (last_run_at is None or source.last_run_at > last_run_at):
-                last_run_at = source.last_run_at
-
-        total_sources_all = session.scalar(select(func.count()).select_from(Source)) or 0
-
-        meta = {
-            "total_sources": len(serialized),
-            "active_sources": active_sources,
-            "inactive_sources": len(serialized) - active_sources,
-            "total_items": int(total_items),
-            "type_breakdown": dict(sorted(type_counter.items())),
-            "last_run_at": last_run_at.isoformat() if isinstance(last_run_at, datetime) else None,
-            "total_sources_all": int(total_sources_all),
-            "filters_applied": bool(search or type_values or enabled_param not in (None, "")),
-        }
-
-        filters_payload = {
-            "query": search or None,
-            "types": type_values,
-            "enabled": enabled_filter,
-        }
+        filters_payload.setdefault("query", search)
+        filters_payload.setdefault("types", type_values)
+        filters_payload.setdefault("enabled", enabled_filter)
+        filters_payload.setdefault("tags", tag_values)
+        if not tag_values:
+            filters_payload.pop("tags", None)
 
         payload = {
             "sources": serialized,
@@ -335,36 +231,20 @@ def create_source_endpoint():
     session = _open_session()
     try:
         payload = request.get_json() or {}
-        name = (payload.get("name") or "").strip()
-        endpoint = (payload.get("endpoint") or "").strip()
-        if not name or not endpoint:
-            return jsonify({"error": "name and endpoint are required"}), 400
-
-        source_type = (payload.get("type") or "rss").strip() or "rss"
         settings = get_worker_settings(session)
-        interval_minutes = payload.get("interval_minutes")
-        if interval_minutes is None:
-            interval_minutes = settings.get("default_interval_minutes", 15)
-        interval_minutes = _coerce_int(interval_minutes, settings.get("default_interval_minutes", 15), minimum=0)
 
-        source = Source(
-            name=name,
-            type=source_type,
-            endpoint=endpoint,
-            enabled=_coerce_bool(payload.get("enabled"), True),
-            interval_sec=interval_minutes * 60,
-        )
-        if isinstance(payload.get("auth"), dict):
-            source.auth_json = payload.get("auth")
-        if isinstance(payload.get("filters"), dict):
-            source.filters_json = payload.get("filters")
+        source, errors = crawler_create_source(session, payload, defaults=settings)
+        if errors:
+            session.rollback()
+            message = errors[0] if errors else "invalid source payload"
+            return jsonify({"error": message, "errors": errors}), 400
 
-        session.add(source)
         try:
             session.commit()
         except IntegrityError:
             session.rollback()
             return jsonify({"error": "could not create source"}), 409
+
         return jsonify(_serialize_source(source)), 201
     finally:
         session.close()
@@ -382,38 +262,19 @@ def update_source_endpoint(source_id: int):
             return jsonify({"error": "source not found"}), 404
 
         payload = request.get_json() or {}
-
-        if "name" in payload:
-            name = (payload.get("name") or "").strip()
-            if not name:
-                return jsonify({"error": "name cannot be empty"}), 400
-            source.name = name
-        if "endpoint" in payload:
-            endpoint = (payload.get("endpoint") or "").strip()
-            if not endpoint:
-                return jsonify({"error": "endpoint cannot be empty"}), 400
-            source.endpoint = endpoint
-        if "type" in payload:
-            source.type = (payload.get("type") or source.type).strip() or source.type
-        if "enabled" in payload:
-            source.enabled = _coerce_bool(payload.get("enabled"), bool(source.enabled))
-        if "interval_minutes" in payload:
-            interval_minutes = _coerce_int(
-                payload.get("interval_minutes"),
-                int((source.interval_sec or 0) / 60),
-                minimum=0,
-            )
-            source.interval_sec = interval_minutes * 60
-        if "auth" in payload and isinstance(payload.get("auth"), dict):
-            source.auth_json = payload.get("auth")
-        if "filters" in payload and isinstance(payload.get("filters"), dict):
-            source.filters_json = payload.get("filters")
+        settings = get_worker_settings(session)
+        errors = crawler_update_source(source, payload, defaults=settings)
+        if errors:
+            session.rollback()
+            message = errors[0] if errors else "invalid payload"
+            return jsonify({"error": message, "errors": errors}), 400
 
         try:
             session.commit()
         except IntegrityError:
             session.rollback()
             return jsonify({"error": "could not update source"}), 409
+
         return jsonify(_serialize_source(source)), 200
     finally:
         session.close()

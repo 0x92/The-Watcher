@@ -22,6 +22,7 @@ NAV_ITEMS = [
     {"endpoint": "ui.graph", "label": "Graph", "roles": {"analyst", "admin"}},
     {"endpoint": "ui.alerts", "label": "Alerts", "roles": {"analyst", "admin"}},
     {"endpoint": "ui.patterns", "label": "Patterns", "roles": {"analyst", "admin"}},
+    {"endpoint": "ui.crawlers", "label": "Crawler", "roles": {"admin"}},
     {"endpoint": "ui.admin", "label": "Admin", "roles": {"admin"}},
 ]
 
@@ -185,6 +186,13 @@ def graph():
 @role_required(PAGE_PERMISSIONS["ui.alerts"])
 def alerts():
     return render_template("ui/alerts.html")
+
+
+@ui_bp.route("/crawlers")
+@login_required
+@role_required(PAGE_PERMISSIONS["ui.crawlers"])
+def crawlers():
+    return render_template("ui/crawlers.html")
 
 
 @ui_bp.route("/admin")
